@@ -7,7 +7,15 @@ Contabilidad personal de ingresos de **Vodra**, **Kick KPP** y **Twitch**. Next.
 - No hay carpeta `/api`: todo usa **Server Actions** y páginas renderizadas en servidor. Next.js agrupa todo en pocas funciones, así que no chocas con el límite de funciones por deployment de Hobby.
 - El token de Turso solo existe en el servidor (variables de entorno). Nunca llega al navegador.
 - Las tablas se crean solas la primera vez que entras (no tienes que correr SQL a mano).
-- Toda la app está protegida por contraseña (`proxy.ts`) y le dice a Google que no la indexe.
+- Toda la app está protegida por contraseña y le dice a Google que no la indexe.
+
+## Seguridad
+
+- Contraseña única (`APP_PASSWORD`). Tras 5 intentos fallidos desde una IP, el login se bloquea 15 minutos (se guarda en Turso, tabla `login_intentos`).
+- La sesión es una cookie `httpOnly` firmada con `AUTH_SECRET` que caduca a los 30 días. Cambiar `APP_PASSWORD` o `AUTH_SECRET` cierra todas las sesiones.
+- Doble barrera: `proxy.ts` redirige a `/login` y además cada Server Action y el layout comprueban la sesión por su cuenta.
+- Todo lo que llega del navegador se valida (fechas reales, montos con tope, textos de máx. 200 caracteres, máx. 2000 filas por importación).
+- Cabeceras de seguridad en `next.config.ts`: CSP, `X-Frame-Options: DENY`, HSTS, `nosniff`, `Referrer-Policy`.
 
 ## 1. Turso
 
@@ -36,26 +44,29 @@ Para probar sin Turso puedes usar `TURSO_DATABASE_URL=file:local.db`.
    - `TURSO_AUTH_TOKEN`
    - `APP_PASSWORD` → la contraseña para entrar
    - `AUTH_SECRET` → genera una con `openssl rand -hex 32`
-4. Deploy.
+4. Deploy. La primera visita crea las tablas y aplica las migraciones solas.
 
-Si cambias `AUTH_SECRET`, se cierran todas las sesiones.
+Recomendado: en **Settings → Functions → Region** elige la región más cercana a tu base de Turso (`turso db show contastream` dice dónde está). Si quedan lejos, cada página tarda más.
 
 ## Uso
 
-- **Mes**: cuánto ganaste en un mes: total, comparación con el mes anterior, cobrado vs. por cobrar, horas en vivo y $/hora, desglose por fuente, gráfica por día y todos los movimientos. Se navega con ‹ › o con el selector. El mes se cuenta por la fecha del stream o del pago capturado, no por cuándo te depositan.
-- **Importar**: pega lo que copias de **Vodra** o de **Kick KPP** (o las dos cosas juntas). La app detecta de dónde viene cada fila:
-  - Vodra: `Oct 31 · título · 5h 5m · viewers · CPVM · boost · impresiones` + `$2.18` + `pending` + `Stream`
+- **Resumen**:
+  - *Generado en el mes*: todo lo que produjiste este mes (completado + pendiente), por fuente.
+  - *Ganancias del mes*: lo que **cobraste** en el mes, por fecha de pago, con selector de mes y desglose. Si Vodra te paga en noviembre los streams del 31 de octubre, cuentan en noviembre.
+  - *Vodra pendiente*: todo lo que Vodra te debe, acumulado. Botón "Vodra pagó todo".
+- **Mes**: total del mes, comparación con el anterior, horas en vivo, gráfica por día y todos los movimientos.
+- **Streams**: filtros de mes, rango de fechas (desde/hasta), fuente y estado, que se aplican al instante. Columna *p/h* (pago por hora, solo Kick). Casillas para marcar varios streams de Vodra como completados.
+- **Agregar datos**: pagos a mano (Twitch, bonos, ajustes). El botón **Importar tabla** abre el pegado de Vodra / Kick KPP:
+  - Vodra: `Sep 20 · título · 2h 4m · viewers · CPVM · boost · impresiones` + `$0.21` + `completed` (el tipo `Stream` es opcional)
   - Kick KPP: `título` + `1 de octubre de 2026 a las 8:59 · 08:07:13 · Validado` + `6,71 US$`
 
-  Funciona con columnas separadas por tabuladores o por espacios. Ves una vista previa antes de guardar. Si pegas algo repetido se actualiza en vez de duplicarse, y lo que ya marcaste como *paid* no vuelve a *pending*.
-- **Streams**: todo por mes, con filtro Vodra / Kick KPP, subtotal por día, $/hora por fuente y botón para marcar el mes de cada fuente como pagado.
-- **Twitch y manuales**: Twitch se captura a mano (subs, bits, anuncios) como *pending*. Una barra muestra cuánto llevas acumulado contra los $50 del pago mínimo de Twitch; cuando te paguen, marca esas filas como *paid* y la barra vuelve a cero. También sirve para bonos o ajustes de Vodra y Kick. El mínimo se cambia en `META_TWITCH` (`lib/db.ts`).
-- **Resumen**: total general, lo que falta por cobrar, $/hora de cada fuente y una tabla por mes.
+  Columnas separadas por tabuladores o por 2+ espacios (el título no debe tener dos espacios seguidos). Hay vista previa antes de guardar. Lo repetido se actualiza en vez de duplicarse.
 
 ### Estados
-- Vodra: `pending` / `paid` tal como vienen.
-- Kick: "Validado" se guarda como `pending` (validado, aún no cobrado). Cuando Kick te pague, márcalo como `paid`.
+- Solo **Vodra** puede quedar *Pendiente*. `paid`, `completed`, `completado`, `pagado` o `cobrado` entran como *Completado*.
+- Vodra **Below minimum**: se anula. No se guarda ni cuenta; si ya estaba guardado, se borra al volver a pegarlo.
+- **Kick** y **Twitch** pagan al instante: siempre *Completado* y cuentan en el mes de su propio stream/registro.
 
 ### Cómo se guardan los datos
-Turso tiene 2 tablas: `streams` (lo que pegas, con su `fuente`), `manuales` (lo que capturas a mano). Los totales no se guardan: se calculan sumando filas cada vez que abres una página.
+Turso tiene las tablas `streams` (lo pegado), `manuales` (lo capturado a mano) y `login_intentos`. Cada fila completada guarda `cobrado_en`, la fecha de cobro que usan las ganancias del mes. Los totales no se guardan: se calculan sumando filas al abrir cada página.
 Respaldo: `turso db shell contastream .dump > respaldo.sql`

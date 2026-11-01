@@ -56,6 +56,8 @@ export async function login(_prev: string | null, form: FormData): Promise<strin
   // Límite de intentos por IP, guardado en Turso para que sirva también en serverless.
   const ip = ((await headers()).get("x-forwarded-for") ?? "").split(",")[0].trim() || "local";
   const c = await db();
+  // Los bloqueos vencidos ya no sirven: se borran para que la tabla no crezca sin límite.
+  await c.execute({ sql: "DELETE FROM login_intentos WHERE hasta < ?", args: [Date.now()] });
   const previo = (await c.execute({ sql: "SELECT n, hasta FROM login_intentos WHERE ip = ?", args: [ip] })).rows[0];
   if (previo && Number(previo.n) >= MAX_INTENTOS && Date.now() < Number(previo.hasta)) {
     return "Demasiados intentos, espera 15 minutos";
