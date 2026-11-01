@@ -1,0 +1,9 @@
+node_modules
+.next
+.env
+.env.local
+*.db
+next-env.d.ts
+*.tsbuildinfo
+.vercel
+graphify-out
