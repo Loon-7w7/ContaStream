@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowUpRight, ArrowDownRight, ClipboardPaste } from "lucide-react";
-import { db, FUENTES, LISTA_FUENTES, textoEstado, type Fuente } from "@/lib/db";
+import { db, impuestoPct, ceros, fuentesVisibles, FUENTES, LISTA_FUENTES, textoEstado, type Fuente } from "@/lib/db";
 import { dinero, horas, nombreMes, nombreMesLargo, moverMes, mesActual, diaCorto } from "@/lib/format";
 import { completarVodra } from "../actions";
 import { BotonEnviar } from "./boton-enviar";
@@ -17,7 +17,6 @@ const MOVIMIENTOS = `
 const MES_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 type PorFuente = Record<Fuente, number>;
-const ceros = (): PorFuente => ({ vodra: 0, kick: 0, twitch: 0 });
 const suma = (p: PorFuente) => LISTA_FUENTES.reduce((a, f) => a + p[f], 0);
 
 function Monto({ n }: { n: number }) {
@@ -39,7 +38,8 @@ export default async function Resumen({ searchParams }: { searchParams: Promise<
   const desde = moverMes(mes, -11);
 
   const c = await db();
-  const [porMes, estados, minutos, recientes, cobros, mesesCobro] = await c.batch(
+  const pct = await impuestoPct(c);
+  const [porMes, estados, minutos, recientes, cobros, mesesCobro, gastosMes] = await c.batch(
     [
       {
         sql: `SELECT substr(fecha,1,7) mes, fuente, SUM(monto) total FROM (${MOVIMIENTOS})
@@ -60,6 +60,7 @@ export default async function Resumen({ searchParams }: { searchParams: Promise<
         args: [mes, mesG],
       },
       `SELECT DISTINCT substr(cobrado_en,1,7) mes FROM (${MOVIMIENTOS}) WHERE cobrado_en IS NOT NULL ORDER BY mes DESC`,
+      { sql: "SELECT COALESCE(SUM(monto), 0) total FROM gastos WHERE substr(fecha,1,7) = ?", args: [mesG] },
     ],
     "read",
   );
@@ -80,11 +81,14 @@ export default async function Resumen({ searchParams }: { searchParams: Promise<
   const mesesConDatos = meses.filter((m) => suma(serie.get(m)!) > 0);
   const promedio = mesesConDatos.length ? mesesConDatos.reduce((a, m) => a + suma(serie.get(m)!), 0) / mesesConDatos.length : 0;
 
-  // Vodra pendiente: todo lo acumulado sin pagar
+  // Pendiente: todo lo acumulado sin pagar (Vodra y sponsors)
   let vodraPend = 0;
+  let sponsorPend = 0;
   for (const r of estados.rows) {
     const t = Number(r.total);
-    if (r.estado !== "paid" && r.fuente === "vodra") vodraPend += t;
+    if (r.estado === "paid") continue;
+    if (r.fuente === "vodra") vodraPend += t;
+    if (r.fuente === "sponsor") sponsorPend += t;
   }
 
   // Horas en vivo sin contar doble: por día, la fuente con más minutos.
@@ -113,7 +117,15 @@ export default async function Resumen({ searchParams }: { searchParams: Promise<
   };
   const gananciasHoy = ganancias(mes);
   const g = ganancias(mesG);
+  // Neto del mes elegido: cobrado − gastos del mes − impuesto (sobre lo cobrado).
+  const gastosG = Number(gastosMes.rows[0].total);
+  const impuestoG = Math.max(0, g.total) * (pct / 100);
+  const quedaG = g.total - gastosG - impuestoG;
   const opcionesG = [...new Set([mes, mesG, ...mesesCobro.rows.map((r) => String(r.mes))])].sort().reverse();
+
+  // Las fuentes nuevas (Starvios, redes, sponsors) solo se listan cuando tienen dinero.
+  const enSerie = ceros();
+  for (const m of meses) for (const f of LISTA_FUENTES) enSerie[f] += Math.abs(serie.get(m)![f]);
 
   const movs = recientes.rows as unknown as { origen: string; id: number; fuente: Fuente; fecha: string; concepto: string; monto: number; estado: string }[];
   const vacio = movs.length === 0;
@@ -123,7 +135,7 @@ export default async function Resumen({ searchParams }: { searchParams: Promise<
       <div className="page-head">
         <div>
           <h1>Resumen</h1>
-          <p className="lead">Tus ingresos de Vodra, Kick y Twitch en un solo lugar.</p>
+          <p className="lead">Tus ingresos de streams, redes y sponsors en un solo lugar.</p>
         </div>
         <div className="acciones">
           <Link href="/importar?tab=pegar" className="btn primary">
@@ -156,7 +168,7 @@ export default async function Resumen({ searchParams }: { searchParams: Promise<
             ))}
           </div>
           <div className="leyenda">
-            {LISTA_FUENTES.map((f) => (
+            {fuentesVisibles(esteMes).map((f) => (
               <div key={f} className="item">
                 <span className="nombre">
                   <span className={`dot bg-${f}`} aria-hidden="true" /> {FUENTES[f]}
@@ -178,7 +190,7 @@ export default async function Resumen({ searchParams }: { searchParams: Promise<
           </div>
           <p className="ganancias-nota">Cobrado en {nombreMes(mesG)}, por fecha de pago (no la del stream).</p>
           <ul className="ganancias-lista">
-            {LISTA_FUENTES.map((f) => (
+            {fuentesVisibles(g.por).map((f) => (
               <li key={f}>
                 <span className="nombre">
                   <span className={`dot bg-${f}`} aria-hidden="true" /> {FUENTES[f]}
@@ -187,6 +199,24 @@ export default async function Resumen({ searchParams }: { searchParams: Promise<
               </li>
             ))}
           </ul>
+          {(gastosG > 0 || pct > 0) && (
+            <ul className="ganancias-lista" aria-label="Neto del mes">
+              <li>
+                <Link href={`/gastos?mes=${mesG}`} className="nombre">Gastos</Link>
+                <span className="monto err">−{dinero(gastosG)}</span>
+              </li>
+              {pct > 0 && (
+                <li>
+                  <Link href="/ajustes" className="nombre">Impuestos ({pct}%)</Link>
+                  <span className="monto" style={{ color: "var(--warn)" }}>−{dinero(impuestoG)}</span>
+                </li>
+              )}
+              <li className="neto">
+                <span className="nombre">Te queda</span>
+                <span className={`monto ${quedaG < 0 ? "err" : ""}`}>{dinero(quedaG)}</span>
+              </li>
+            </ul>
+          )}
           {g.atrasado > 0 && (
             <p className="ganancias-nota" style={{ marginTop: 10 }}>
               Incluye {dinero(g.atrasado)} de {g.nAtrasado} {g.nAtrasado === 1 ? "registro" : "registros"} de meses
@@ -213,6 +243,11 @@ export default async function Resumen({ searchParams }: { searchParams: Promise<
             </form>
           ) : (
             <div className="sub">Vodra no te debe nada</div>
+          )}
+          {sponsorPend > 0 && (
+            <div className="sub">
+              <Link href="/importar">Sponsors te deben {dinero(sponsorPend)}</Link>
+            </div>
           )}
         </div>
         <div className="kpi">
@@ -259,7 +294,7 @@ export default async function Resumen({ searchParams }: { searchParams: Promise<
             })}
           </div>
           <div className="chart-pie">
-            {LISTA_FUENTES.map((f) => (
+            {fuentesVisibles(enSerie).map((f) => (
               <span key={f}>
                 <span className={`dot bg-${f}`} aria-hidden="true" /> {FUENTES[f]}
               </span>
@@ -275,7 +310,7 @@ export default async function Resumen({ searchParams }: { searchParams: Promise<
           {vacio ? (
             <p className="muted" style={{ margin: 0 }}>
               Todavía no hay movimientos. <Link href="/importar?tab=pegar">Importa tu primera tabla</Link> o{" "}
-              <Link href="/importar">registra un pago de Twitch</Link>.
+              <Link href="/importar">registra un pago a mano</Link>.
             </p>
           ) : (
             <ul className="movs">

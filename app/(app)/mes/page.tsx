@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { db, FUENTES, LISTA_FUENTES, textoEstado, type Fuente } from "@/lib/db";
+import { db, ceros, fuentesVisibles, FUENTES, LISTA_FUENTES, textoEstado, type Fuente } from "@/lib/db";
 import { dinero, horas, nombreMes, nombreMesLargo, moverMes, diasDelMes, mesActual, diaCorto } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -45,10 +45,12 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ me
   const total = lista.reduce((a, m) => a + m.monto, 0);
   const cobrado = lista.reduce((a, m) => a + (m.estado === "paid" ? m.monto : 0), 0);
   const pendiente = total - cobrado;
+  // Lo pendiente puede ser de Vodra o de sponsors: se desglosa para no llamarlo todo "Vodra".
+  const pendSponsor = lista.reduce((a, m) => a + (m.estado !== "paid" && m.fuente === "sponsor" ? m.monto : 0), 0);
   const totalAnterior = Number(prev.rows[0].total);
   const cambio = totalAnterior ? ((total - totalAnterior) / totalAnterior) * 100 : null;
 
-  const porFuente = Object.fromEntries(LISTA_FUENTES.map((f) => [f, 0])) as Record<Fuente, number>;
+  const porFuente = ceros();
   for (const m of lista) if (m.fuente in porFuente) porFuente[m.fuente] += m.monto;
 
   // Por día. Las horas se toman como la fuente con más minutos ese día,
@@ -56,7 +58,7 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ me
   const nDias = diasDelMes(mes);
   const dias = Array.from({ length: nDias }, (_, i) => ({
     dia: i + 1,
-    monto: Object.fromEntries(LISTA_FUENTES.map((f) => [f, 0])) as Record<Fuente, number>,
+    monto: ceros(),
     minutos: {} as Record<string, number>,
   }));
   for (const m of lista) {
@@ -74,7 +76,7 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ me
 
   return (
     <>
-      <div className="row" style={{ alignItems: "center", marginBottom: 6 }}>
+      <div className="row mes-head" style={{ alignItems: "center", marginBottom: 6 }}>
         <Link href={`/mes?mes=${anterior}`} className="btn" aria-label="Mes anterior">‹</Link>
         <h1 style={{ margin: 0 }}>{nombreMesLargo(mes)}</h1>
         <Link href={`/mes?mes=${siguiente}`} className="btn" aria-label="Mes siguiente">›</Link>
@@ -84,7 +86,10 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ me
               <option key={m} value={m}>{nombreMesLargo(m)}</option>
             ))}
           </select>{" "}
-          <button>Ver</button>
+          <button>Ver</button>{" "}
+          <a href={`/exportar?periodo=${mes}&ref=fecha`} className="btn" download>
+            CSV
+          </a>
         </form>
       </div>
       <p className="muted" style={{ marginTop: 0 }}>
@@ -111,9 +116,11 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ me
           <div className="sub">{total ? Math.round((cobrado / total) * 100) : 0}% del mes</div>
         </div>
         <div className="card">
-          <div className="label">Vodra pendiente</div>
+          <div className="label">Pendiente</div>
           <div className="value" style={{ color: "var(--warn)" }}>{dinero(pendiente)}</div>
-          <div className="sub">Aún sin pagar</div>
+          <div className="sub">
+            {pendSponsor ? <>Vodra {dinero(pendiente - pendSponsor)} · Sponsors {dinero(pendSponsor)}</> : "Aún sin pagar"}
+          </div>
         </div>
         <div className="card">
           <div className="label">Tiempo en vivo</div>
@@ -126,7 +133,7 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ me
 
       <h2>Por fuente</h2>
       <div className="fuentes">
-        {LISTA_FUENTES.map((f) => {
+        {fuentesVisibles(porFuente).map((f) => {
           const pct = total ? (porFuente[f] / total) * 100 : 0;
           return (
             <div key={f} className="fuente-fila">
@@ -165,7 +172,7 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ me
         })}
       </div>
       <div className="row muted" style={{ fontSize: 12, marginTop: 6 }}>
-        {LISTA_FUENTES.map((f) => (
+        {fuentesVisibles(porFuente).map((f) => (
           <span key={f}><span className={`punto ${f}`} /> {FUENTES[f]}</span>
         ))}
       </div>
@@ -173,7 +180,7 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ me
       <h2>Movimientos ({lista.length})</h2>
       {lista.length === 0 ? (
         <p className="muted">
-          No hay nada en este mes. <Link href="/importar?tab=pegar">Importar</Link> · <Link href="/importar">Agregar Twitch</Link>
+          No hay nada en este mes. <Link href="/importar?tab=pegar">Importar</Link> · <Link href="/importar">Agregar a mano</Link>
         </p>
       ) : (
         <div className="table-scroll">
@@ -193,15 +200,15 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ me
                   <td>{diaCorto(m.fecha)}</td>
                   <td><span className={`tag ${m.fuente}`}>{FUENTES[m.fuente] ?? m.fuente}</span></td>
                   <td className="titulo">{m.concepto}</td>
-                  <td className="num">{dinero(m.monto)}</td>
-                  <td><span className={`pill ${m.estado}`}>{textoEstado(m.estado)}</span></td>
+                  <td className="num monto">{dinero(m.monto)}</td>
+                  <td className="estado"><span className={`pill ${m.estado}`}>{textoEstado(m.estado)}</span></td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr>
                 <td colSpan={3}>Total {nombreMesLargo(mes)}</td>
-                <td className="num">{dinero(total)}</td>
+                <td className="num monto">{dinero(total)}</td>
                 <td></td>
               </tr>
             </tfoot>

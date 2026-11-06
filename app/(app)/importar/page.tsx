@@ -14,7 +14,7 @@ export default async function AgregarDatos({ searchParams }: { searchParams: Pro
         <div>
           <h1>{pegar ? "Importar tabla" : "Agregar datos"}</h1>
           <p className="lead">
-            {pegar ? "Pega la tabla de Vodra o la lista de Kick KPP." : "Twitch, bonos y ajustes que registras a mano."}
+            {pegar ? "Pega la tabla de Vodra o la lista de Kick KPP." : "Twitch, Starvios, redes, sponsors y bonos que registras a mano."}
           </p>
         </div>
         <div className="acciones">

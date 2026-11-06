@@ -108,9 +108,9 @@ export function PegarTabla() {
                     <td>{diaCorto(f.fecha)}</td>
                     <td className="titulo">{f.titulo}</td>
                     <td className="num">{horas(f.duracion_min)}</td>
-                    <td className="num">{f.impresiones ? entero(f.impresiones) : "—"}</td>
-                    <td className="num">{dinero(f.ganado)}</td>
-                    <td><span className={`pill ${f.estado}`}>{textoEstado(f.estado)}</span> <span className="muted">{f.fuente === "kick" ? f.tipo : ""}</span></td>
+                    <td className="num" data-label="Impr.">{f.impresiones ? entero(f.impresiones) : "—"}</td>
+                    <td className="num monto">{dinero(f.ganado)}</td>
+                    <td className="estado"><span className={`pill ${f.estado}`}>{textoEstado(f.estado)}</span> <span className="muted">{f.fuente === "kick" ? f.tipo : ""}</span></td>
                   </tr>
                 ))}
               </tbody>

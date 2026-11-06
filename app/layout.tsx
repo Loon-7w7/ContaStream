@@ -8,6 +8,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Usa toda la pantalla en iPhone con notch; los márgenes seguros se respetan con env(safe-area-inset-*).
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f3f5f7" },
     { media: "(prefers-color-scheme: dark)", color: "#0f141b" },

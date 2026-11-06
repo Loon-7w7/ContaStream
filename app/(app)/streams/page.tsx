@@ -207,7 +207,7 @@ export default async function Streams({ searchParams }: { searchParams: Promise<
                 {filas.map((f) => {
                   return (
                     <tr key={f.id}>
-                      <td>
+                      <td className="sel">
                         {f.fuente === "vodra" && f.estado === "pending" && (
                           <input type="checkbox" name="ids" value={f.id} form="seleccion" aria-label={`Seleccionar ${f.titulo}`} />
                         )}
@@ -216,9 +216,9 @@ export default async function Streams({ searchParams }: { searchParams: Promise<
                       <td><span className={`tag ${f.fuente}`}>{FUENTES[f.fuente] ?? f.fuente}</span></td>
                       <td className="titulo">{f.titulo}</td>
                       <td className="num">{horas(f.duracion_min)}</td>
-                      <td className="num">{dinero(f.ganado)}</td>
-                      <td className="num">{porHora(f)}</td>
-                      <td>
+                      <td className="num monto">{dinero(f.ganado)}</td>
+                      <td className="num" data-label="p/h">{porHora(f)}</td>
+                      <td className="estado">
                         {f.fuente === "vodra" ? (
                           <form action={estadoStream} className="inline">
                             <input type="hidden" name="id" value={f.id} />
@@ -235,7 +235,7 @@ export default async function Streams({ searchParams }: { searchParams: Promise<
                           <span className={`pill ${f.estado}`}>{textoEstado(f.estado)}</span>
                         )}
                       </td>
-                      <td>
+                      <td className="acc">
                         <form action={borrarStream} className="inline">
                           <input type="hidden" name="id" value={f.id} />
                           <BotonEnviar className="small danger" title="Borrar" aria-label={`Borrar ${f.titulo}`} confirmar={`¿Borrar "${f.titulo}"?`}>
@@ -250,7 +250,7 @@ export default async function Streams({ searchParams }: { searchParams: Promise<
               <tfoot>
                 <tr>
                   <td colSpan={5}>Total</td>
-                  <td className="num">{dinero(total)}</td>
+                  <td className="num monto">{dinero(total)}</td>
                   <td colSpan={3}></td>
                 </tr>
               </tfoot>
