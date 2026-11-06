@@ -180,10 +180,11 @@ const LOTE_HOY = "(SELECT id FROM pagos_vodra WHERE fecha = :hoy)";
 const COMPLETAR = `estado = 'paid', cobrado_en = COALESCE(cobrado_en, :hoy),
   pago_id = CASE WHEN fuente = 'vodra' AND estado = 'pending' THEN ${LOTE_HOY} ELSE pago_id END`;
 
-/** Cambio de estado de una fila (solo Vodra puede quedar pendiente). Parámetros: :estado, :hoy. */
-const CAMBIO_ESTADO = `estado = CASE WHEN fuente = 'vodra' THEN :estado ELSE 'paid' END,
+/** Cambio de estado de una fila (solo Vodra y Sponsors pueden quedar pendientes; solo Vodra va a lotes).
+ *  Parámetros: :estado, :hoy. */
+const CAMBIO_ESTADO = `estado = CASE WHEN fuente IN ('vodra', 'sponsor') THEN :estado ELSE 'paid' END,
   cobrado_en = CASE
-    WHEN fuente != 'vodra' THEN COALESCE(cobrado_en, fecha)
+    WHEN fuente NOT IN ('vodra', 'sponsor') THEN COALESCE(cobrado_en, fecha)
     WHEN :estado = 'paid' THEN COALESCE(cobrado_en, :hoy)
     ELSE NULL END,
   pago_id = CASE

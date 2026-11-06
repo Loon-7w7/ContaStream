@@ -99,8 +99,8 @@ export default async function Gastos({ searchParams }: { searchParams: Promise<{
                   <td>{diaCorto(g.fecha)}</td>
                   <td>{CATEGORIAS[g.categoria] ?? g.categoria}</td>
                   <td className="titulo">{g.concepto}</td>
-                  <td className="num">{dinero(g.monto)}</td>
-                  <td>
+                  <td className="num monto">{dinero(g.monto)}</td>
+                  <td className="acc">
                     <form action={borrarGasto} className="inline">
                       <input type="hidden" name="id" value={g.id} />
                       <BotonEnviar className="small danger" title="Borrar" aria-label={`Borrar ${g.concepto}`} confirmar={`¿Borrar "${g.concepto}"?`}>
@@ -114,7 +114,7 @@ export default async function Gastos({ searchParams }: { searchParams: Promise<{
             <tfoot>
               <tr>
                 <td colSpan={3}>Total {nombreMesLargo(mes)}</td>
-                <td className="num">{dinero(total)}</td>
+                <td className="num monto">{dinero(total)}</td>
                 <td></td>
               </tr>
             </tfoot>

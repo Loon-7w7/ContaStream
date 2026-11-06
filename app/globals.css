@@ -14,6 +14,12 @@
   --vodra: #0b9dbf;
   --kick: #3fbf1c;
   --twitch: #8b5cf6;
+  --starvios: #e0457b;
+  --youtube: #dc2626;
+  --tiktok: #3f4a5a;
+  --meta: #2563eb;
+  --redes: #c2870a;
+  --sponsor: #0d9488;
 
   --paid: #0f766e;
   --paid-bg: #e3f4f1;
@@ -55,6 +61,13 @@
     --danger: #ff8a5c;
     --up: #4fd1bd;
     --down: #ff8a5c;
+
+    --starvios: #f472a6;
+    --youtube: #f87171;
+    --tiktok: #a7b3c2;
+    --meta: #60a5fa;
+    --redes: #e5b445;
+    --sponsor: #2dd4bf;
 
     --ink-btn: #e8edf3;
     --ink-btn-text: #0f141b;
@@ -127,6 +140,12 @@ h2 { font-family: var(--font-display); font-size: 17px; letter-spacing: -0.01em;
 .card.vodra { border-top: 3px solid var(--vodra); }
 .card.kick { border-top: 3px solid var(--kick); }
 .card.twitch { border-top: 3px solid var(--twitch); }
+.card.starvios { border-top: 3px solid var(--starvios); }
+.card.youtube { border-top: 3px solid var(--youtube); }
+.card.tiktok { border-top: 3px solid var(--tiktok); }
+.card.meta { border-top: 3px solid var(--meta); }
+.card.redes { border-top: 3px solid var(--redes); }
+.card.sponsor { border-top: 3px solid var(--sponsor); }
 
 /* KPIs en tira (Resumen) */
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-l); }
@@ -162,7 +181,15 @@ h2 { font-family: var(--font-display); font-size: 17px; letter-spacing: -0.01em;
 .leyenda .pct { color: var(--faint); font-size: 12.5px; }
 
 .dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; flex: none; }
-.bg-vodra { background: var(--vodra); } .bg-kick { background: var(--kick); } .bg-twitch { background: var(--twitch); }
+.bg-vodra { background: var(--vodra); }
+.bg-kick { background: var(--kick); }
+.bg-twitch { background: var(--twitch); }
+.bg-starvios { background: var(--starvios); }
+.bg-youtube { background: var(--youtube); }
+.bg-tiktok { background: var(--tiktok); }
+.bg-meta { background: var(--meta); }
+.bg-redes { background: var(--redes); }
+.bg-sponsor { background: var(--sponsor); }
 
 /* Meta de Twitch */
 .ganancias { display: flex; flex-direction: column; }
@@ -238,6 +265,12 @@ button.pill:hover { filter: brightness(0.96); background: inherit; }
 .tag.vodra::before { background: var(--vodra); }
 .tag.kick::before { background: var(--kick); }
 .tag.twitch::before { background: var(--twitch); }
+.tag.starvios::before { background: var(--starvios); }
+.tag.youtube::before { background: var(--youtube); }
+.tag.tiktok::before { background: var(--tiktok); }
+.tag.meta::before { background: var(--meta); }
+.tag.redes::before { background: var(--redes); }
+.tag.sponsor::before { background: var(--sponsor); }
 
 /* ---------- Controles ---------- */
 
@@ -276,12 +309,18 @@ textarea { width: 100%; min-height: 220px; font-family: ui-monospace, "SF Mono",
 /* ---------- Página Mes ---------- */
 
 .fuentes { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
-.fuente-fila { display: grid; grid-template-columns: 100px 1fr 90px 44px; gap: 12px; align-items: center; }
+.fuente-fila { display: grid; grid-template-columns: 150px 1fr 90px 44px; gap: 12px; align-items: center; }
 .fuente-barra { height: 10px; background: var(--line); border-radius: 99px; overflow: hidden; }
 .fuente-barra .seg { height: 100%; }
 .seg.vodra { background: var(--vodra); }
 .seg.kick { background: var(--kick); }
 .seg.twitch { background: var(--twitch); }
+.seg.starvios { background: var(--starvios); }
+.seg.youtube { background: var(--youtube); }
+.seg.tiktok { background: var(--tiktok); }
+.seg.meta { background: var(--meta); }
+.seg.redes { background: var(--redes); }
+.seg.sponsor { background: var(--sponsor); }
 .dias { display: grid; grid-template-columns: repeat(31, minmax(0, 1fr)); gap: 3px; height: 170px;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 12px 4px; }
 .dia { display: flex; flex-direction: column; min-width: 0; }
@@ -289,7 +328,15 @@ textarea { width: 100%; min-height: 220px; font-family: ui-monospace, "SF Mono",
 .dia-col .seg { width: 100%; }
 .dia-n { font-size: 10px; color: var(--faint); text-align: center; line-height: 16px; }
 .punto { display: inline-block; width: 8px; height: 8px; border-radius: 2px; }
-.punto.vodra { background: var(--vodra); } .punto.kick { background: var(--kick); } .punto.twitch { background: var(--twitch); }
+.punto.vodra { background: var(--vodra); }
+.punto.kick { background: var(--kick); }
+.punto.twitch { background: var(--twitch); }
+.punto.starvios { background: var(--starvios); }
+.punto.youtube { background: var(--youtube); }
+.punto.tiktok { background: var(--tiktok); }
+.punto.meta { background: var(--meta); }
+.punto.redes { background: var(--redes); }
+.punto.sponsor { background: var(--sponsor); }
 
 /* ---------- Login ---------- */
 
@@ -316,32 +363,150 @@ textarea { width: 100%; min-height: 220px; font-family: ui-monospace, "SF Mono",
   .kpi:nth-child(n + 3) { border-top: 1px solid var(--line); }
 }
 
+/* Barra inferior y panel "Más": solo en el teléfono. */
+.tabbar, .mas-panel, .mas-fondo { display: none; }
+
 @media (max-width: 760px) {
+  /* --- Estructura: cabecera arriba, barra de secciones abajo --- */
   .shell { grid-template-columns: minmax(0, 1fr); }
-  .side { top: 0; z-index: 10; height: auto; flex-direction: row; align-items: center; gap: 8px; padding: 10px 16px; border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  .side {
+    z-index: 20; height: auto; flex-direction: row; align-items: center; gap: 8px;
+    padding: max(10px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
+    border-right: 0; border-bottom: 1px solid var(--line);
+  }
+  .side .side-nav, .side .side-foot { display: none; }
   .brand { padding: 0; }
-  .brand-name { display: none; }
-  .side nav { display: flex; gap: 2px; }
-  .side nav a { padding: 7px 9px; white-space: nowrap; }
-  .side nav a span { display: none; }
-  .side nav a[aria-current="page"] span { display: inline; }
-  .side nav a[aria-current="page"] { box-shadow: none; }
-  .side-foot { margin: 0 0 0 auto; display: flex; }
-  .wrap { padding: 20px 16px 48px; }
+  .brand-mark { width: 26px; height: 26px; }
+  .brand-name { font-size: 17px; }
+  .wrap {
+    padding: 18px max(16px, env(safe-area-inset-right)) calc(88px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  }
+
+  .tabbar {
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    background: var(--surface); border-top: 1px solid var(--line);
+    padding: 4px max(4px, env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
+  }
+  .tabbar a, .tabbar button {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    min-height: 54px; padding: 4px 2px; border: 0; border-radius: var(--radius-s); background: transparent;
+    color: var(--muted); font: 500 11px var(--font-ui); text-decoration: none; -webkit-tap-highlight-color: transparent;
+  }
+  .tabbar a:hover, .tabbar button:hover { background: transparent; }
+  .tabbar svg { width: 22px; height: 22px; }
+  .tabbar [aria-current="page"] { color: var(--text); font-weight: 600; }
+  .tabbar [aria-current="page"] svg { stroke-width: 2.4; }
+
+  .mas-fondo { display: block; position: fixed; inset: 0; z-index: 25; background: rgb(0 0 0 / 0.35); }
+  .mas-panel {
+    display: grid; gap: 4px; position: fixed; z-index: 26;
+    left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right));
+    bottom: calc(70px + env(safe-area-inset-bottom));
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-l);
+    padding: 8px; box-shadow: 0 12px 32px rgb(0 0 0 / 0.22);
+  }
+  .mas-panel nav { display: grid; gap: 2px; }
+  .mas-panel a, .mas-salir {
+    display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 10px 12px;
+    border-radius: var(--radius-s); text-decoration: none; font-weight: 500; font-size: 15px;
+  }
+  .mas-panel a[aria-current="page"] { background: var(--surface-2); }
+  .mas-panel svg { width: 20px; height: 20px; flex: none; }
+  .mas-salir { justify-content: flex-start; border-top: 1px solid var(--line) !important; border-radius: 0 0 var(--radius-s) var(--radius-s); }
+
+  /* --- Toque cómodo (16px evita que iOS haga zoom al escribir) --- */
+  input, select, textarea { font-size: 16px; }
+  input:not([type="checkbox"]):not([type="radio"]), select { min-height: 44px; }
+  input[type="checkbox"] { width: 22px; height: 22px; }
+  button, .btn { min-height: 44px; justify-content: center; }
+  button.small { min-height: 36px; padding: 6px 12px; font-size: 13px; }
+  button.pill { min-height: 32px; }
+
+  /* --- Encabezados y formularios a todo el ancho --- */
+  h1 { font-size: 24px; margin-bottom: 14px; }
+  h2 { margin-top: 26px; }
+  .page-head { margin-bottom: 16px; }
+  .page-head .acciones { margin-left: 0; width: 100%; }
+  .page-head .acciones > * { flex: 1 1 auto; }
+  .row { gap: 10px; }
+  /* !important: algunos formularios traen flex/minWidth en línea pensados para escritorio. */
+  .row label { flex: 1 1 140px !important; min-width: 0 !important; }
+  .row input:not([type="checkbox"]):not([type="hidden"]), .row select { width: 100% !important; min-width: 0; max-width: 100%; }
+  input[type="date"] { -webkit-appearance: none; appearance: none; display: block; }
+  input[type="date"]::-webkit-date-and-time-value { text-align: left; }
+  .row > button, .row > .btn, .row > form { flex: 1 1 100%; }
+  .row > form button { width: 100%; }
+  .form-panel { padding: 14px; }
+
+  /* Tarjetas de cifras de dos en dos */
+  .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .card { padding: 12px 14px; }
+  .card .value { font-size: 21px; overflow-wrap: anywhere; }
+
+  /* Mes: ‹ título › en una línea, selector de mes debajo */
+  .mes-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; }
+  .mes-head h1 { text-align: center; font-size: 21px; }
+  .mes-head > .btn { min-width: 44px; }
+  .mes-head form { grid-column: 1 / -1; margin-left: 0 !important; display: flex; gap: 8px; }
+  .mes-head form select { flex: 1; min-width: 0; }
+  .mes-head form button { width: auto; }
+
+  /* --- Resumen y Mes --- */
   .leyenda .monto { font-size: 16px; }
   .leyenda .pct { font-size: 12px; }
-  .side-foot button span { display: none; }
-  .side-foot button { padding: 7px 9px; }
   .hero-main { padding: 20px; }
   .panel { padding: 18px; }
-  .login { grid-template-columns: minmax(0, 1fr); }
-  .login-arte { display: none; }
-  .chart { gap: 4px; }
+  .chart { gap: 4px; height: 180px; }
   .chart .etq { font-size: 10px; }
+  .dias { height: 140px; gap: 2px; padding: 10px 8px 4px; }
   .dia-n { font-size: 0; }
   .dia:nth-child(5n + 1) .dia-n { font-size: 9px; }
-  .fuente-fila { grid-template-columns: 84px 1fr 76px; }
+  .fuente-fila { grid-template-columns: 110px 1fr 76px; gap: 10px; }
   .fuente-fila > :last-child { display: none; }
+  .lote-montos { margin-left: 0; text-align: left; }
+
+  /* --- Tablas como tarjetas: título y monto arriba, datos al medio, estado y acciones abajo --- */
+  .table-scroll { overflow: visible; background: none; border: 0; border-radius: 0; }
+  .table-scroll table, .table-scroll tbody, .table-scroll tfoot { display: block; }
+  .table-scroll thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .table-scroll tbody { display: grid; gap: 8px; }
+  .table-scroll tr {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px;
+    padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  }
+  .table-scroll tbody tr:hover { background: var(--surface); }
+  .table-scroll tr::before, .table-scroll tr::after { content: ""; flex-basis: 100%; height: 0; }
+  .table-scroll tr::before { order: 3; }
+  .table-scroll tr::after { order: 5; }
+  .table-scroll td { order: 4; padding: 0; border: 0; font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .table-scroll td:empty { display: none; }
+  .table-scroll td[data-label]::before { content: attr(data-label) " "; color: var(--faint); }
+  .table-scroll td.sel { order: 0; }
+  .table-scroll td.titulo {
+    order: 1; flex: 1 1 0; min-width: 0; max-width: none; white-space: normal; overflow-wrap: anywhere;
+    color: var(--text); font-size: 15px; font-weight: 500;
+  }
+  .table-scroll td.monto { order: 2; margin-left: auto; color: var(--text); font-size: 15px; font-weight: 600; }
+  .table-scroll td.estado { order: 6; }
+  .table-scroll td.acc { order: 7; margin-left: auto; }
+  .table-scroll tfoot { margin-top: 8px; }
+  .table-scroll tfoot tr { background: var(--surface-2); border-color: var(--line-strong); }
+  .table-scroll tfoot td { order: 1; color: var(--text); font-size: 14px; }
+  .table-scroll tfoot td.monto { order: 2; }
+
+  /* --- Login --- */
+  .login { grid-template-columns: minmax(0, 1fr); }
+  .login-arte { display: none; }
+}
+
+/* Teléfonos chicos */
+@media (max-width: 400px) {
+  .leyenda { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi { padding: 14px; }
+  .kpi .value { font-size: 19px; }
+  .card .value { font-size: 22px; }
+  .tabbar a, .tabbar button { font-size: 10.5px; }
 }
 
 @media (prefers-reduced-motion: no-preference) {

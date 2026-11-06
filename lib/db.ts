@@ -71,9 +71,9 @@ const AJUSTES = [
   `CREATE INDEX IF NOT EXISTS idx_manuales_cobro ON manuales(cobrado_en)`,
   `CREATE INDEX IF NOT EXISTS idx_streams_pago ON streams(pago_id)`,
   `CREATE INDEX IF NOT EXISTS idx_manuales_pago ON manuales(pago_id)`,
-  // Kick y Twitch pagan al instante: nunca quedan pendientes y se cobran el mismo día.
-  `UPDATE streams SET estado = 'paid' WHERE fuente != 'vodra' AND estado != 'paid'`,
-  `UPDATE manuales SET estado = 'paid' WHERE fuente != 'vodra' AND estado != 'paid'`,
+  // Kick, Twitch, Starvios y redes pagan al instante: nunca quedan pendientes y se cobran el mismo día.
+  `UPDATE streams SET estado = 'paid' WHERE fuente NOT IN ('vodra', 'sponsor') AND estado != 'paid'`,
+  `UPDATE manuales SET estado = 'paid' WHERE fuente NOT IN ('vodra', 'sponsor') AND estado != 'paid'`,
   // Lo completado sin fecha de cobro (datos de antes de existir la columna) cuenta en su propio mes.
   `UPDATE streams SET cobrado_en = fecha WHERE estado = 'paid' AND cobrado_en IS NULL`,
   `UPDATE manuales SET cobrado_en = fecha WHERE estado = 'paid' AND cobrado_en IS NULL`,
@@ -133,10 +133,30 @@ export async function db(): Promise<Client> {
   return client;
 }
 
-export const FUENTES = { vodra: "Vodra", kick: "Kick KPP", twitch: "Twitch" } as const;
+export const FUENTES = {
+  vodra: "Vodra",
+  kick: "Kick KPP",
+  twitch: "Twitch",
+  starvios: "Starvios",
+  youtube: "YouTube",
+  tiktok: "TikTok",
+  meta: "Instagram / Facebook",
+  redes: "Otras redes",
+  sponsor: "Sponsors",
+} as const;
 export type Fuente = keyof typeof FUENTES;
 export const LISTA_FUENTES = Object.keys(FUENTES) as Fuente[];
 export const esFuente = (v: unknown): v is Fuente => typeof v === "string" && Object.hasOwn(FUENTES, v);
+
+/** Siempre visibles en resúmenes y gráficas; el resto solo aparece cuando tiene dinero en lo que se muestra. */
+export const FUENTES_FIJAS: readonly Fuente[] = ["vodra", "kick", "twitch"];
+export const fuentesVisibles = (montos: Partial<Record<Fuente, number>>) =>
+  LISTA_FUENTES.filter((f) => FUENTES_FIJAS.includes(f) || (montos[f] ?? 0) !== 0);
+export const ceros = () => Object.fromEntries(LISTA_FUENTES.map((f) => [f, 0])) as Record<Fuente, number>;
+
+/** Fuentes que pagan después y pueden quedar pendientes. El resto entra siempre como completado. */
+export const FUENTES_DIFERIDAS: readonly Fuente[] = ["vodra", "sponsor"];
+export const esDiferida = (f: string) => (FUENTES_DIFERIDAS as readonly string[]).includes(f);
 
 /** Fuentes que vienen de tablas pegadas (tienen streams con duración). */
 export const FUENTES_STREAMS = ["vodra", "kick"] as const satisfies readonly Fuente[];
@@ -144,7 +164,6 @@ export const FUENTES_STREAMS = ["vodra", "kick"] as const satisfies readonly Fue
 // Viven en format.ts para que los componentes de cliente no arrastren este módulo.
 export { ESTADOS, textoEstado } from "./format";
 
-/** Solo Vodra paga más tarde; el resto entra siempre como completado. */
 /** Categorías fijas de gastos. */
 export const CATEGORIAS = {
   equipo: "Equipo",
@@ -165,7 +184,7 @@ export async function impuestoPct(c?: Client): Promise<number> {
   return Number.isFinite(n) && n >= 0 && n <= 100 ? n : 0;
 }
 
-export const estadoPara = (fuente: string, estado: "pending" | "paid") => (fuente === "vodra" ? estado : "paid");
+export const estadoPara = (fuente: string, estado: "pending" | "paid") => (esDiferida(fuente) ? estado : "paid");
 
 
 export type Stream = {

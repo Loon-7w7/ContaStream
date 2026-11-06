@@ -1,9 +1,17 @@
-import { db, FUENTES, LISTA_FUENTES, textoEstado, type Manual } from "@/lib/db";
+import { db, esDiferida, FUENTES, textoEstado, type Fuente, type Manual } from "@/lib/db";
 import { dinero, diaCorto, hoyMx } from "@/lib/format";
 import { agregarManual, borrarManual, estadoManual } from "../../actions";
 import { BotonEnviar } from "../boton-enviar";
 
-// Twitch (todo a mano) y lo que no viene en las tablas: bonos, pagos fijos, ajustes.
+/** Orden del selector: lo que se captura a mano primero; Vodra y Kick (bonos y ajustes) al final. */
+const GRUPOS: { nombre: string; fuentes: Fuente[] }[] = [
+  { nombre: "Plataformas de stream", fuentes: ["twitch", "starvios"] },
+  { nombre: "Redes sociales", fuentes: ["youtube", "tiktok", "meta", "redes"] },
+  { nombre: "Patrocinios", fuentes: ["sponsor"] },
+  { nombre: "Bonos y ajustes", fuentes: ["vodra", "kick"] },
+];
+
+// Twitch, Starvios, redes y sponsors (todo a mano) y lo que no viene en las tablas: bonos, pagos fijos, ajustes.
 export async function ManualesPagos() {
   const filas = (await (await db()).execute("SELECT * FROM manuales ORDER BY fecha DESC, id DESC")).rows as unknown as Manual[];
   const hoy = hoyMx();
@@ -11,16 +19,22 @@ export async function ManualesPagos() {
   return (
     <>
       <p className="muted">
-        Aquí va <strong>Twitch</strong> (subs, bits, anuncios) y los bonos o ajustes de Vodra y Kick. Lo de Kick y Twitch
-        se guarda siempre como <em>Completado</em>; solo lo de Vodra puede quedar <em>Pendiente</em> hasta que te pague.
+        Aquí va <strong>Twitch</strong> y <strong>Starvios</strong> (subs, bits, anuncios), lo que ganas en{" "}
+        <strong>redes</strong> (YouTube, TikTok, Instagram / Facebook…), tus <strong>sponsors</strong> y los bonos o ajustes
+        de Vodra y Kick. Todo se guarda como <em>Completado</em>, salvo Vodra y Sponsors, que pueden quedar{" "}
+        <em>Pendiente</em> hasta que te paguen. Para sponsors pon la marca en el concepto.
       </p>
 
       <form action={agregarManual} className="row" style={{ marginBottom: 18 }}>
         <label>
           Fuente
           <select name="fuente" defaultValue="twitch">
-            {[...LISTA_FUENTES].reverse().map((f) => (
-              <option key={f} value={f}>{FUENTES[f]}</option>
+            {GRUPOS.map((g) => (
+              <optgroup key={g.nombre} label={g.nombre}>
+                {g.fuentes.map((f) => (
+                  <option key={f} value={f}>{FUENTES[f]}</option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </label>
@@ -30,7 +44,7 @@ export async function ManualesPagos() {
         </label>
         <label style={{ flex: 1, minWidth: 180 }}>
           Concepto
-          <input name="concepto" placeholder="Subs, bits, anuncios, bono…" style={{ width: "100%" }} />
+          <input name="concepto" placeholder="Subs, bits, Super Chats, marca del sponsor…" style={{ width: "100%" }} />
         </label>
         <label>
           Monto (USD)
@@ -39,7 +53,7 @@ export async function ManualesPagos() {
         <label>
           Estado
           <select name="estado" defaultValue="pending">
-            <option value="pending">Pendiente (solo Vodra)</option>
+            <option value="pending">Pendiente (Vodra y Sponsors)</option>
             <option value="paid">Completado</option>
           </select>
         </label>
@@ -68,9 +82,9 @@ export async function ManualesPagos() {
                   <td>{diaCorto(f.fecha)} <span className="muted">{f.fecha.slice(0, 4)}</span></td>
                   <td><span className={`tag ${f.fuente}`}>{FUENTES[f.fuente] ?? f.fuente}</span></td>
                   <td className="titulo">{f.concepto}</td>
-                  <td className="num">{dinero(f.monto)}</td>
-                  <td>
-                    {f.fuente === "vodra" ? (
+                  <td className="num monto">{dinero(f.monto)}</td>
+                  <td className="estado">
+                    {esDiferida(f.fuente) ? (
                       <form action={estadoManual} className="inline">
                         <input type="hidden" name="id" value={f.id} />
                         <input type="hidden" name="estado" value={f.estado === "paid" ? "pending" : "paid"} />
@@ -86,7 +100,7 @@ export async function ManualesPagos() {
                       <span className={`pill ${f.estado}`}>{textoEstado(f.estado)}</span>
                     )}
                   </td>
-                  <td>
+                  <td className="acc">
                     <form action={borrarManual} className="inline">
                       <input type="hidden" name="id" value={f.id} />
                       <BotonEnviar className="small danger" title="Borrar" aria-label={`Borrar ${f.concepto}`} confirmar={`¿Borrar "${f.concepto}"?`}>

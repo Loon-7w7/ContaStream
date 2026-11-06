@@ -132,7 +132,7 @@ export default async function PagosVodra() {
                               <td>{diaCorto(d.fecha)}</td>
                               <td className="titulo">{d.concepto}</td>
                               <td className="num muted">{d.duracion_min === null ? "Manual" : horas(d.duracion_min)}</td>
-                              <td className="num">{dinero(d.monto)}</td>
+                              <td className="num monto">{dinero(d.monto)}</td>
                             </tr>
                           ))}
                         </tbody>
