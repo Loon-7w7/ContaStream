@@ -7,3 +7,6 @@ next-env.d.ts
 *.tsbuildinfo
 .vercel
 graphify-out
+
+# Volcados de error de Git Bash en Windows
+*.stackdump
