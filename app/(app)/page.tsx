@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowUpRight, ArrowDownRight, ClipboardPaste } from "lucide-react";
-import { db, FUENTES, LISTA_FUENTES, textoEstado, type Fuente } from "@/lib/db";
+import { db, impuestoPct, FUENTES, LISTA_FUENTES, textoEstado, type Fuente } from "@/lib/db";
 import { dinero, horas, nombreMes, nombreMesLargo, moverMes, mesActual, diaCorto } from "@/lib/format";
 import { completarVodra } from "../actions";
 import { BotonEnviar } from "./boton-enviar";
@@ -39,7 +39,8 @@ export default async function Resumen({ searchParams }: { searchParams: Promise<
   const desde = moverMes(mes, -11);
 
   const c = await db();
-  const [porMes, estados, minutos, recientes, cobros, mesesCobro] = await c.batch(
+  const pct = await impuestoPct(c);
+  const [porMes, estados, minutos, recientes, cobros, mesesCobro, gastosMes] = await c.batch(
     [
       {
         sql: `SELECT substr(fecha,1,7) mes, fuente, SUM(monto) total FROM (${MOVIMIENTOS})
@@ -60,6 +61,7 @@ export default async function Resumen({ searchParams }: { searchParams: Promise<
         args: [mes, mesG],
       },
       `SELECT DISTINCT substr(cobrado_en,1,7) mes FROM (${MOVIMIENTOS}) WHERE cobrado_en IS NOT NULL ORDER BY mes DESC`,
+      { sql: "SELECT COALESCE(SUM(monto), 0) total FROM gastos WHERE substr(fecha,1,7) = ?", args: [mesG] },
     ],
     "read",
   );
@@ -113,6 +115,10 @@ export default async function Resumen({ searchParams }: { searchParams: Promise<
   };
   const gananciasHoy = ganancias(mes);
   const g = ganancias(mesG);
+  // Neto del mes elegido: cobrado − gastos del mes − impuesto (sobre lo cobrado).
+  const gastosG = Number(gastosMes.rows[0].total);
+  const impuestoG = Math.max(0, g.total) * (pct / 100);
+  const quedaG = g.total - gastosG - impuestoG;
   const opcionesG = [...new Set([mes, mesG, ...mesesCobro.rows.map((r) => String(r.mes))])].sort().reverse();
 
   const movs = recientes.rows as unknown as { origen: string; id: number; fuente: Fuente; fecha: string; concepto: string; monto: number; estado: string }[];
@@ -187,6 +193,24 @@ export default async function Resumen({ searchParams }: { searchParams: Promise<
               </li>
             ))}
           </ul>
+          {(gastosG > 0 || pct > 0) && (
+            <ul className="ganancias-lista" aria-label="Neto del mes">
+              <li>
+                <Link href={`/gastos?mes=${mesG}`} className="nombre">Gastos</Link>
+                <span className="monto err">−{dinero(gastosG)}</span>
+              </li>
+              {pct > 0 && (
+                <li>
+                  <Link href="/ajustes" className="nombre">Impuestos ({pct}%)</Link>
+                  <span className="monto" style={{ color: "var(--warn)" }}>−{dinero(impuestoG)}</span>
+                </li>
+              )}
+              <li className="neto">
+                <span className="nombre">Te queda</span>
+                <span className={`monto ${quedaG < 0 ? "err" : ""}`}>{dinero(quedaG)}</span>
+              </li>
+            </ul>
+          )}
           {g.atrasado > 0 && (
             <p className="ganancias-nota" style={{ marginTop: 10 }}>
               Incluye {dinero(g.atrasado)} de {g.nAtrasado} {g.nAtrasado === 1 ? "registro" : "registros"} de meses

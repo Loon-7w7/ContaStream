@@ -18,6 +18,7 @@ const SCHEMA = [
     estado TEXT NOT NULL DEFAULT 'pending',
     tipo TEXT,
     cobrado_en TEXT,
+    pago_id INTEGER,
     creado TEXT DEFAULT (datetime('now')),
     UNIQUE(fuente, fecha, titulo, duracion_min, impresiones)
   )`,
@@ -29,8 +30,30 @@ const SCHEMA = [
     monto REAL NOT NULL,
     estado TEXT NOT NULL DEFAULT 'pending',
     cobrado_en TEXT,
+    pago_id INTEGER,
     creado TEXT DEFAULT (datetime('now'))
   )`,
+  `CREATE TABLE IF NOT EXISTS gastos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha TEXT NOT NULL,
+    categoria TEXT NOT NULL,
+    concepto TEXT NOT NULL,
+    monto REAL NOT NULL,
+    creado TEXT DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS ajustes (
+    clave TEXT PRIMARY KEY,
+    valor TEXT NOT NULL
+  )`,
+  // Un lote por día de pago: todo lo de Vodra que pasa a completado ese día queda ligado a él (pago_id).
+  `CREATE TABLE IF NOT EXISTS pagos_vodra (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha TEXT NOT NULL UNIQUE,
+    recibido REAL,
+    nota TEXT,
+    creado TEXT DEFAULT (datetime('now'))
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_gastos_fecha ON gastos(fecha)`,
   `CREATE TABLE IF NOT EXISTS login_intentos (
     ip TEXT PRIMARY KEY,
     n INTEGER NOT NULL,
@@ -46,6 +69,8 @@ const SCHEMA = [
 const AJUSTES = [
   `CREATE INDEX IF NOT EXISTS idx_streams_cobro ON streams(cobrado_en)`,
   `CREATE INDEX IF NOT EXISTS idx_manuales_cobro ON manuales(cobrado_en)`,
+  `CREATE INDEX IF NOT EXISTS idx_streams_pago ON streams(pago_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_manuales_pago ON manuales(pago_id)`,
   // Kick y Twitch pagan al instante: nunca quedan pendientes y se cobran el mismo día.
   `UPDATE streams SET estado = 'paid' WHERE fuente != 'vodra' AND estado != 'paid'`,
   `UPDATE manuales SET estado = 'paid' WHERE fuente != 'vodra' AND estado != 'paid'`,
@@ -54,14 +79,35 @@ const AJUSTES = [
   `UPDATE manuales SET cobrado_en = fecha WHERE estado = 'paid' AND cobrado_en IS NULL`,
   `UPDATE streams SET cobrado_en = NULL WHERE estado = 'pending' AND cobrado_en IS NOT NULL`,
   `UPDATE manuales SET cobrado_en = NULL WHERE estado = 'pending' AND cobrado_en IS NOT NULL`,
+  // Lo pendiente nunca pertenece a un lote de pago.
+  `UPDATE streams SET pago_id = NULL WHERE estado = 'pending' AND pago_id IS NOT NULL`,
+  `UPDATE manuales SET pago_id = NULL WHERE estado = 'pending' AND pago_id IS NOT NULL`,
+];
+
+/** Historial de pagos de Vodra para datos de antes de existir pago_id:
+ *  lo que se cobró después de la fecha del stream se agrupa por día de cobro. */
+const LOTES_HISTORICOS = [
+  `INSERT OR IGNORE INTO pagos_vodra (fecha)
+     SELECT cobrado_en FROM streams WHERE fuente = 'vodra' AND estado = 'paid' AND cobrado_en > fecha
+     UNION SELECT cobrado_en FROM manuales WHERE fuente = 'vodra' AND estado = 'paid' AND cobrado_en > fecha`,
+  `UPDATE streams SET pago_id = (SELECT id FROM pagos_vodra p WHERE p.fecha = streams.cobrado_en)
+     WHERE fuente = 'vodra' AND estado = 'paid' AND cobrado_en > fecha`,
+  `UPDATE manuales SET pago_id = (SELECT id FROM pagos_vodra p WHERE p.fecha = manuales.cobrado_en)
+     WHERE fuente = 'vodra' AND estado = 'paid' AND cobrado_en > fecha`,
 ];
 
 /** Añade columnas nuevas a tablas que ya existían (SQLite no tiene ADD COLUMN IF NOT EXISTS). */
 async function migrar(c: Client) {
+  let pagoNuevo = false;
   for (const tabla of ["streams", "manuales"]) {
     const cols = (await c.execute(`PRAGMA table_info(${tabla})`)).rows.map((r) => String(r.name));
     if (!cols.includes("cobrado_en")) await c.execute(`ALTER TABLE ${tabla} ADD COLUMN cobrado_en TEXT`);
+    if (!cols.includes("pago_id")) {
+      await c.execute(`ALTER TABLE ${tabla} ADD COLUMN pago_id INTEGER`);
+      pagoNuevo = true;
+    }
   }
+  if (pagoNuevo) await c.batch(LOTES_HISTORICOS, "write");
 }
 
 /** Devuelve el cliente de Turso y crea las tablas la primera vez. */
@@ -99,6 +145,26 @@ export const FUENTES_STREAMS = ["vodra", "kick"] as const satisfies readonly Fue
 export { ESTADOS, textoEstado } from "./format";
 
 /** Solo Vodra paga más tarde; el resto entra siempre como completado. */
+/** Categorías fijas de gastos. */
+export const CATEGORIAS = {
+  equipo: "Equipo",
+  internet: "Internet",
+  software: "Software y suscripciones",
+  comisiones: "Comisiones",
+  publicidad: "Publicidad",
+  otros: "Otros",
+} as const;
+export type Categoria = keyof typeof CATEGORIAS;
+export const LISTA_CATEGORIAS = Object.keys(CATEGORIAS) as Categoria[];
+export const esCategoria = (v: unknown): v is Categoria => typeof v === "string" && Object.hasOwn(CATEGORIAS, v);
+
+/** Porcentaje de impuestos guardado en Ajustes (0 si nunca se configuró). */
+export async function impuestoPct(c?: Client): Promise<number> {
+  const r = (await (c ?? (await db())).execute("SELECT valor FROM ajustes WHERE clave = 'impuesto_pct'")).rows[0];
+  const n = Number(r?.valor);
+  return Number.isFinite(n) && n >= 0 && n <= 100 ? n : 0;
+}
+
 export const estadoPara = (fuente: string, estado: "pending" | "paid") => (fuente === "vodra" ? estado : "paid");
 
 
@@ -126,4 +192,12 @@ export type Manual = {
   monto: number;
   estado: string;
   cobrado_en: string | null;
+};
+
+export type Gasto = {
+  id: number;
+  fecha: string;
+  categoria: Categoria;
+  concepto: string;
+  monto: number;
 };

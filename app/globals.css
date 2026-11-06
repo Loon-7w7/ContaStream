@@ -175,6 +175,17 @@ h2 { font-family: var(--font-display); font-size: 17px; letter-spacing: -0.01em;
 .ganancias-lista li { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
 .ganancias-lista .nombre { display: flex; align-items: center; gap: 7px; color: var(--muted); font-weight: 500; }
 .ganancias-lista .monto { font-weight: 600; font-variant-numeric: tabular-nums; }
+.ganancias-lista li.neto { padding-top: 8px; border-top: 1px dashed var(--line-strong); }
+.ganancias-lista li.neto .nombre { color: var(--text); font-weight: 600; }
+.ganancias-lista li.neto .monto { font-size: 16px; }
+
+/* ---------- Pagos de Vodra ---------- */
+
+.lotes { display: grid; gap: 12px; }
+.lote { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+.lote-head { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.lote-fecha { font-family: var(--font-display); font-weight: 600; font-size: 18px; }
+.lote-montos { margin-left: auto; display: grid; gap: 2px; text-align: right; font-size: 14px; font-variant-numeric: tabular-nums; }
 
 /* ---------- Gráfica 12 meses + movimientos ---------- */
 

@@ -61,6 +61,11 @@ Recomendado: en **Settings → Functions → Region** elige la región más cerc
   - Kick KPP: `título` + `1 de octubre de 2026 a las 8:59 · 08:07:13 · Validado` + `6,71 US$`
 
   Columnas separadas por tabuladores o por 2+ espacios (el título no debe tener dos espacios seguidos). Hay vista previa antes de guardar. Lo repetido se actualiza en vez de duplicarse.
+- **Gastos**: equipo, internet, software, comisiones, publicidad u otros (USD), por mes y por categoría. En el Resumen, el panel de *Ganancias del mes* resta los gastos de ese mes y el impuesto, y te dice cuánto *te queda*.
+- **Pagos de Vodra**: historial de pagos. Todo lo de Vodra que pasa de pendiente a completado un mismo día (botón *Vodra pagó todo*, casillas, cambio de estado o al volver a pegar la tabla) queda en el pago de ese día. Puedes anotar lo que de verdad llegó a tu cuenta y ver la diferencia. Si algo vuelve a pendiente, sale del pago; un pago sin registros desaparece.
+- **Ajustes**:
+  - *Impuestos*: porcentaje que se aparta de lo **cobrado** cada mes (0 = oculto).
+  - *Exportar a CSV*: un mes, un año o todo; ingresos por fecha de cobro o por fecha del stream, más los gastos en negativo (la suma de *Monto* es el neto). En la página Mes hay un botón **CSV** directo.
 
 ### Estados
 - Solo **Vodra** puede quedar *Pendiente*. `paid`, `completed`, `completado`, `pagado` o `cobrado` entran como *Completado*.
@@ -68,5 +73,5 @@ Recomendado: en **Settings → Functions → Region** elige la región más cerc
 - **Kick** y **Twitch** pagan al instante: siempre *Completado* y cuentan en el mes de su propio stream/registro.
 
 ### Cómo se guardan los datos
-Turso tiene las tablas `streams` (lo pegado), `manuales` (lo capturado a mano) y `login_intentos`. Cada fila completada guarda `cobrado_en`, la fecha de cobro que usan las ganancias del mes. Los totales no se guardan: se calculan sumando filas al abrir cada página.
+Turso tiene las tablas `streams` (lo pegado), `manuales` (lo capturado a mano), `gastos`, `pagos_vodra` (lotes de pago; `streams.pago_id` y `manuales.pago_id` apuntan a ellos), `ajustes` (porcentaje de impuestos) y `login_intentos`. Al aplicar la migración, lo que Vodra ya había pagado antes se agrupa en pagos por su fecha de cobro. Cada fila completada guarda `cobrado_en`, la fecha de cobro que usan las ganancias del mes. Los totales no se guardan: se calculan sumando filas al abrir cada página.
 Respaldo: `turso db shell contastream .dump > respaldo.sql`

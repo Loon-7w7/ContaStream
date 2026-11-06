@@ -84,7 +84,10 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ me
               <option key={m} value={m}>{nombreMesLargo(m)}</option>
             ))}
           </select>{" "}
-          <button>Ver</button>
+          <button>Ver</button>{" "}
+          <a href={`/exportar?periodo=${mes}&ref=fecha`} className="btn" download>
+            CSV
+          </a>
         </form>
       </div>
       <p className="muted" style={{ marginTop: 0 }}>

@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, CalendarDays, ListVideo, ClipboardPaste, LogOut } from "lucide-react";
+import { LayoutDashboard, CalendarDays, ListVideo, ClipboardPaste, Receipt, Wallet, Settings, LogOut } from "lucide-react";
 import { logout } from "../actions";
 
 const LINKS = [
   { href: "/", label: "Resumen", Icon: LayoutDashboard },
   { href: "/mes", label: "Mes", Icon: CalendarDays },
   { href: "/streams", label: "Streams", Icon: ListVideo },
+  { href: "/gastos", label: "Gastos", Icon: Receipt },
+  { href: "/pagos", label: "Pagos de Vodra", Icon: Wallet },
   { href: "/importar", label: "Agregar datos", Icon: ClipboardPaste },
+  { href: "/ajustes", label: "Ajustes", Icon: Settings },
 ];
 
 export function Marca() {
