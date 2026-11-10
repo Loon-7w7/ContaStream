@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { login } from "../actions";
 import { Marca } from "../(app)/sidebar";
+import { Footer } from "../footer";
 
 export default function LoginPage() {
   const [error, action, pending] = useActionState(login, null);
@@ -33,6 +34,7 @@ export default function LoginPage() {
           <button className="primary" disabled={pending}>{pending ? "Entrando…" : "Entrar"}</button>
           {error && <span className="err" role="alert">{error}. Revisa e intenta de nuevo.</span>}
         </form>
+        <Footer />
       </section>
     </main>
   );

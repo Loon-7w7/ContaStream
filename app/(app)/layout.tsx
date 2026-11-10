@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE, sesionValida } from "@/lib/auth";
 import { Sidebar } from "./sidebar";
+import { Footer } from "../footer";
 
 // Segunda barrera además de proxy.ts: ninguna página de la app se pinta sin sesión.
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -11,6 +12,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Sidebar />
       <div className="main">
         <main className="wrap">{children}</main>
+        <Footer />
       </div>
     </div>
   );
