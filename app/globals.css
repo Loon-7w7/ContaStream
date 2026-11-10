@@ -113,11 +113,15 @@ a { color: inherit; }
 .side nav svg { width: 18px; height: 18px; flex: none; }
 .side-foot { margin-top: auto; display: grid; gap: 8px; }
 
-.main { min-width: 0; display: flex; flex-direction: column; min-height: 100vh; }
-.main .wrap { flex: 1; width: 100%; }
+.main { min-width: 0; }
 
-/* Pie de página fijo al final del contenido (no flota). */
-.pie { padding: 16px 32px 20px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12.5px; text-align: center; }
+/* Pie de página fijo: siempre visible abajo, no se mueve con el scroll. */
+.pie {
+  position: fixed; left: 232px; right: 0; bottom: 0; z-index: 15;
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+  background: var(--surface); border-top: 1px solid var(--line);
+  color: var(--faint); font-size: 12.5px; line-height: 1.4; text-align: center;
+}
 .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 32px 64px; }
 
 .page-head { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
@@ -350,8 +354,8 @@ textarea { width: 100%; min-height: 220px; font-family: ui-monospace, "SF Mono",
 .login-arte .cifra { font-family: var(--font-display); font-weight: 700; font-size: clamp(44px, 6vw, 72px); letter-spacing: -0.045em; line-height: 1; }
 .login-arte p { color: #aab4c0; max-width: 40ch; margin: 12px 0 0; }
 .login-arte .cinta { max-width: 420px; background: #2a3646; }
-.login-form { display: grid; grid-template-rows: 1fr auto; place-items: center; padding: 32px 16px 0; }
-.login-form .pie { width: 100%; border-top: 0; }
+.login-form { display: grid; place-items: center; padding: 32px 16px 64px; }
+.login-form .pie { left: 50%; }
 .login-form form { width: 100%; max-width: 340px; display: grid; gap: 14px; }
 .login-form h1 { margin: 0; }
 .login-form label { display: grid; gap: 6px; font-size: 13px; font-weight: 500; color: var(--muted); }
@@ -384,9 +388,10 @@ textarea { width: 100%; min-height: 220px; font-family: ui-monospace, "SF Mono",
   .brand-mark { width: 26px; height: 26px; }
   .brand-name { font-size: 17px; }
   .wrap {
-    padding: 18px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left));
+    padding: 18px max(16px, env(safe-area-inset-right)) calc(120px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   }
-  .main .pie { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+  /* Encima de la barra inferior (54px + 8px de relleno + 1px de borde). */
+  .pie { left: 0; padding-bottom: 8px; bottom: calc(63px + env(safe-area-inset-bottom)); }
 
   .tabbar {
     display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -504,6 +509,7 @@ textarea { width: 100%; min-height: 220px; font-family: ui-monospace, "SF Mono",
   /* --- Login --- */
   .login { grid-template-columns: minmax(0, 1fr); }
   .login-arte { display: none; }
+  .login-form .pie { left: 0; bottom: 0; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
 }
 
 /* Teléfonos chicos */
