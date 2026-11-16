@@ -10,3 +10,4 @@ graphify-out
 
 # Volcados de error de Git Bash en Windows
 *.stackdump
+.claude/

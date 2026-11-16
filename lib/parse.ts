@@ -1,6 +1,7 @@
 // Lee el texto pegado y detecta solo de dónde viene cada fila:
 //  - Vodra (nueva): una celda por línea: "Nov 10" / Título / "2h 10m" / 7 / 892 / "0.1501.06x" / "$0.13" / "In review" [/ "Request in wallet"]
 //  - Vodra (vieja): "Oct 31 <sep> Título <sep> 5h 5m <sep> 61 <sep> 0.135 <sep> 1.06x <sep> 18,856" + "$2.18" + "pending" + "Stream"
+//  - Vodra (nov 2026): "Nov 12" / Título / "2h 58m" / 80 / "14.3K" / "0.163" / "$2.20" / "In review" (sin boost, impresiones abreviadas)
 //    Las celdas se reconocen por contenido, no por posición. Todo lo de Vodra entra como pendiente.
 //  - Kick KPP: "Título" (1-2 veces) + "1 de octubre de 2026 a las 8:59 <tab> 08:07:13 <tab> Validado" + "6,71 US$"
 // Los separadores pueden ser tabuladores o 2+ espacios.
@@ -78,6 +79,8 @@ const ENTERO = /^\d{1,3}(?:,\d{3})*$|^\d+$/;
 const DECIMAL = /^\d*\.\d+$/;
 const BOOST = /^(\d*\.\d+)?(\d+(?:\.\d+)?)x$/i; // "1.06x" o pegado al CPVM: "0.1501.06x"
 const DURACION = /^(?:\d+\s*h)?\s*(?:\d+\s*m)?$/i;
+// Números abreviados: "14.3K" → 14300, "1.2M" → 1200000 (la M va en mayúscula; "58m" son minutos)
+const COMPACTO = /^([\d,]*\.?\d+)\s*([Kk]|M)$/;
 
 /** Clasifica las celdas por su contenido (sirve para la tabla vieja y la nueva de Vodra).
  *  Todo lo de Vodra entra como pendiente: el cobro se marca después desde Pagos. */
@@ -89,7 +92,8 @@ function filaVodra(celdas: string[], fecha: string): { fila: FilaStream; anulada
   for (const c of resto) {
     const s = c.replace(/\s+/g, " ");
     let m: RegExpExecArray | null;
-    if (/\d/.test(s) && DURACION.test(s) && /[hm]/i.test(s)) dur = duracionTexto(s);
+    if ((m = COMPACTO.exec(s))) enteros.push(Math.round(Number(m[1].replace(/,/g, "")) * (m[2].toUpperCase() === "K" ? 1e3 : 1e6)));
+    else if (/\d/.test(s) && DURACION.test(s) && /[hm]/i.test(s)) dur = duracionTexto(s);
     else if (/^\$/.test(s)) ganado = num(s);
     else if ((m = BOOST.exec(s.replace(/\s/g, "")))) {
       if (m[1]) {
