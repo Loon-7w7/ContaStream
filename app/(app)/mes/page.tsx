@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { db, ceros, fuentesVisibles, FUENTES, LISTA_FUENTES, textoEstado, type Fuente } from "@/lib/db";
-import { dinero, horas, nombreMes, nombreMesLargo, moverMes, diasDelMes, mesActual, diaCorto } from "@/lib/format";
+import { dinero, horas, porHora, nombreMes, nombreMesLargo, moverMes, diasDelMes, mesActual, diaCorto } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +72,9 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ me
   const diasConStream = dias.filter((d) => Object.keys(d.minutos).length > 0);
   const minutosMes = diasConStream.reduce((a, d) => a + Math.max(...Object.values(d.minutos)), 0);
   const ganadoStreams = lista.filter((m) => m.origen === "stream").reduce((a, m) => a + m.monto, 0);
+  const streamsVodra = lista.filter((m) => m.origen === "stream" && m.fuente === "vodra");
+  const minVodra = streamsVodra.reduce((a, m) => a + m.duracion_min, 0);
+  const ganadoVodra = streamsVodra.reduce((a, m) => a + m.monto, 0);
   const mejorDia = dias.reduce((a, d) => (totalDia(d) > totalDia(a) ? d : a), dias[0]);
 
   return (
@@ -126,8 +129,13 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ me
           <div className="label">Tiempo en vivo</div>
           <div className="value">{horas(minutosMes)}</div>
           <div className="sub">
-            {diasConStream.length} días · {dinero(minutosMes ? ganadoStreams / (minutosMes / 60) : 0)}/h
+            {diasConStream.length} días · {dinero(porHora(ganadoStreams, minutosMes))}/h
           </div>
+          {minVodra > 0 && (
+            <div className="sub">
+              Vodra {horas(minVodra)} · {dinero(ganadoVodra)} · {dinero(porHora(ganadoVodra, minVodra))}/h
+            </div>
+          )}
         </div>
       </div>
 

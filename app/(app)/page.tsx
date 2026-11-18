@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight, ArrowDownRight, ClipboardPaste } from "lucide-react";
 import { db, impuestoPct, ceros, fuentesVisibles, FUENTES, LISTA_FUENTES, textoEstado, type Fuente } from "@/lib/db";
-import { dinero, horas, nombreMes, nombreMesLargo, moverMes, mesActual, diaCorto } from "@/lib/format";
+import { dinero, horas, porHora, nombreMes, nombreMesLargo, moverMes, mesActual, diaCorto } from "@/lib/format";
 import { completarVodra } from "../actions";
 import { BotonEnviar } from "./boton-enviar";
 import { SelectorMes } from "./selector-mes";
@@ -94,10 +94,17 @@ export default async function Resumen({ searchParams }: { searchParams: Promise<
   // Horas en vivo sin contar doble: por día, la fuente con más minutos.
   const porDia = new Map<string, number>();
   let ganadoStreams = 0;
+  // Vodra por separado: sus propias horas y lo que generó en ellas.
+  let minVodra = 0;
+  let ganadoVodra = 0;
   for (const r of minutos.rows) {
     const f = String(r.fecha);
     porDia.set(f, Math.max(porDia.get(f) ?? 0, Number(r.min)));
     ganadoStreams += Number(r.ganado);
+    if (r.fuente === "vodra") {
+      minVodra += Number(r.min);
+      ganadoVodra += Number(r.ganado);
+    }
   }
   const minutosVivo = [...porDia.values()].reduce((a, b) => a + b, 0);
 
@@ -259,8 +266,13 @@ export default async function Resumen({ searchParams }: { searchParams: Promise<
         </div>
         <div className="kpi">
           <div className="label">Por hora en vivo</div>
-          <div className="value">{dinero(minutosVivo ? ganadoStreams / (minutosVivo / 60) : 0)}</div>
+          <div className="value">{dinero(porHora(ganadoStreams, minutosVivo))}</div>
           <div className="sub">{horas(minutosVivo)} transmitidas</div>
+          {minVodra > 0 && (
+            <div className="sub">
+              <Link href="/pagos">Vodra: {dinero(porHora(ganadoVodra, minVodra))}/h</Link> en {horas(minVodra)} ({dinero(ganadoVodra)})
+            </div>
+          )}
         </div>
       </section>
 

@@ -1,11 +1,21 @@
 import { db } from "@/lib/db";
-import { dinero, diaCorto, horas } from "@/lib/format";
+import { dinero, diaCorto, horas, porHora, porHoraRecibido } from "@/lib/format";
 import { guardarPagoVodra } from "../../actions";
 import { BotonEnviar } from "../boton-enviar";
 
 export const dynamic = "force-dynamic";
 
-type Lote = { id: number; fecha: string; recibido: number | null; nota: string | null; n: number; esperado: number };
+// min / en_streams: minutos y dinero solo de streams (los manuales no tienen duración) para el $/h.
+type Lote = {
+  id: number;
+  fecha: string;
+  recibido: number | null;
+  nota: string | null;
+  n: number;
+  esperado: number;
+  min: number;
+  en_streams: number;
+};
 type Item = { pago_id: number; fecha: string; concepto: string; monto: number; duracion_min: number | null };
 
 const LIGADOS = `
@@ -17,7 +27,9 @@ export default async function PagosVodra() {
   const c = await db();
   const [lotes, items, pendiente] = await c.batch(
     [
-      `SELECT p.id, p.fecha, p.recibido, p.nota, COUNT(m.pago_id) n, COALESCE(SUM(m.monto), 0) esperado
+      `SELECT p.id, p.fecha, p.recibido, p.nota, COUNT(m.pago_id) n, COALESCE(SUM(m.monto), 0) esperado,
+         COALESCE(SUM(m.duracion_min), 0) min,
+         COALESCE(SUM(CASE WHEN m.duracion_min IS NOT NULL THEN m.monto END), 0) en_streams
        FROM pagos_vodra p LEFT JOIN (${LIGADOS}) m ON m.pago_id = p.id
        GROUP BY p.id ORDER BY p.fecha DESC`,
       `SELECT * FROM (${LIGADOS}) ORDER BY fecha`,
@@ -41,6 +53,15 @@ export default async function PagosVodra() {
   const diferencia = conRecibido.reduce((a, l) => a + (l.recibido! - l.esperado), 0);
   const clase = (n: number) => (n < -0.005 ? "err" : n > 0.005 ? "ok" : "");
 
+  // $/h de todo lo pagado; el real solo con los pagos donde se anotó lo recibido.
+  const minPagados = lista.reduce((a, l) => a + l.min, 0);
+  const tarifa = porHora(lista.reduce((a, l) => a + l.en_streams, 0), minPagados);
+  const realesConHoras = conRecibido.filter((l) => l.min > 0 && l.esperado > 0);
+  const minReales = realesConHoras.reduce((a, l) => a + l.min, 0);
+  const tarifaReal = minReales
+    ? realesConHoras.reduce((a, l) => a + porHoraRecibido(l.esperado, l.recibido, l.en_streams, l.min)! * l.min, 0) / minReales
+    : null;
+
   return (
     <>
       <div className="page-head">
@@ -58,6 +79,14 @@ export default async function PagosVodra() {
           <div className="label">Pagado por Vodra</div>
           <div className="value ok">{dinero(totalEsperado)}</div>
           <div className="sub">{lista.length} {lista.length === 1 ? "pago registrado" : "pagos registrados"}</div>
+        </div>
+        <div className="card">
+          <div className="label">Vodra por hora</div>
+          <div className="value">{dinero(tarifa)}/h</div>
+          <div className="sub">
+            {horas(minPagados)} pagadas
+            {tarifaReal !== null && <> · real {dinero(tarifaReal)}/h</>}
+          </div>
         </div>
         <div className="card">
           <div className="label">Diferencia acumulada</div>
@@ -81,6 +110,7 @@ export default async function PagosVodra() {
         <div className="lotes">
           {lista.map((l) => {
             const dif = l.recibido === null ? null : l.recibido - l.esperado;
+            const real = porHoraRecibido(l.esperado, l.recibido, l.en_streams, l.min);
             const detalle = porLote.get(l.id) ?? [];
             return (
               <section key={l.id} className="lote" aria-label={`Pago del ${l.fecha}`}>
@@ -96,6 +126,12 @@ export default async function PagosVodra() {
                     <div><span className="muted">Esperado</span> <b>{dinero(l.esperado)}</b></div>
                     {dif !== null && (
                       <div><span className="muted">Diferencia</span> <b className={clase(dif)}>{dinero(dif)}</b></div>
+                    )}
+                    {l.min > 0 && (
+                      <div>
+                        <span className="muted">{horas(l.min)} ·</span> <b>{dinero(porHora(l.en_streams, l.min))}/h</b>
+                        {real !== null && <> <span className="muted">· real</span> <b>{dinero(real)}/h</b></>}
+                      </div>
                     )}
                   </div>
                 </div>
