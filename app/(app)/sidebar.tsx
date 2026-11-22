@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, CalendarDays, ListVideo, ClipboardPaste, Receipt, Wallet, Settings, LogOut, Ellipsis, X,
+  LayoutDashboard, CalendarDays, ListVideo, ClipboardPaste, Receipt, Wallet, FileText, Settings, LogOut, Ellipsis, X,
 } from "lucide-react";
 import { logout } from "../actions";
 
@@ -14,6 +14,7 @@ const LINKS = [
   { href: "/streams", label: "Streams", corto: "Streams", Icon: ListVideo },
   { href: "/gastos", label: "Gastos", corto: "Gastos", Icon: Receipt },
   { href: "/pagos", label: "Pagos de Vodra", corto: "Pagos", Icon: Wallet },
+  { href: "/facturar", label: "Facturar", corto: "Facturar", Icon: FileText },
   { href: "/importar", label: "Agregar datos", corto: "Agregar", Icon: ClipboardPaste },
   { href: "/ajustes", label: "Ajustes", corto: "Ajustes", Icon: Settings },
 ];

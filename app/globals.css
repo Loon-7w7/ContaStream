@@ -314,6 +314,16 @@ textarea { width: 100%; min-height: 220px; font-family: ui-monospace, "SF Mono",
 .ok { color: var(--paid); }
 .err { color: var(--danger); }
 
+/* Facturar: una tarjeta por abono con el texto del CFDI listo para copiar. */
+.facturas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); gap: 12px; margin-bottom: 12px; }
+.factura-head { display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.factura-head .monto { font-family: var(--font-display); font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+.factura-head > button { margin-left: auto; }
+.factura-texto {
+  margin: 0; padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; line-height: 1.5; white-space: pre; overflow-x: auto;
+}
+
 /* ---------- Página Mes ---------- */
 
 .fuentes { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }

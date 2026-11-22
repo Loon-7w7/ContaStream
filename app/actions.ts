@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { db, esCategoria, esFuente, estadoPara } from "@/lib/db";
 import { COOKIE, DURACION_SESION, requireAuth, safeEqual, sessionToken, sha256 } from "@/lib/auth";
 import type { FilaStream } from "@/lib/parse";
+import type { Movimiento } from "@/lib/factura";
 import { hoyMx } from "@/lib/format";
 
 /* ---------- Validación ---------- */
@@ -320,7 +321,65 @@ export async function borrarGasto(form: FormData) {
   revalidatePath("/", "layout");
 }
 
+/* ---------- Facturas ---------- */
+
+/** Los movimientos llegan del cliente: se revisa cada campo antes de tocar la base. */
+function movimientoValido(m: unknown): m is Movimiento {
+  if (!m || typeof m !== "object") return false;
+  const r = m as Record<string, unknown>;
+  return (
+    fechaValida(r.fecha) &&
+    numero(r.monto, 0.01, MAX_MONTO) &&
+    texto(r.pagador) &&
+    texto(r.banco) &&
+    texto(r.referencia) &&
+    texto(r.rastreo)
+  );
+}
+
+export async function guardarFacturas(movs: Movimiento[]) {
+  await requireAuth();
+  if (!Array.isArray(movs) || movs.length > MAX_FILAS || !movs.every(movimientoValido)) {
+    throw new Error("Movimientos inválidos");
+  }
+  const r = await (await db()).batch(
+    movs.map((m) => ({
+      sql: `INSERT OR IGNORE INTO facturas (fecha, monto, pagador, banco, referencia, rastreo) VALUES (?, ?, ?, ?, ?, ?)`,
+      args: [m.fecha, Math.round(m.monto * 100) / 100, m.pagador, m.banco, m.referencia, m.rastreo],
+    })),
+    "write",
+  );
+  const nuevas = r.reduce((a, x) => a + x.rowsAffected, 0);
+  revalidatePath("/facturar");
+  return { nuevas, repetidas: movs.length - nuevas };
+}
+
+export async function borrarFactura(form: FormData) {
+  await requireAuth();
+  const id = idValido(form.get("id"));
+  if (!id) return;
+  await (await db()).execute({ sql: "DELETE FROM facturas WHERE id = ?", args: [id] });
+  revalidatePath("/facturar");
+}
+
 /* ---------- Ajustes ---------- */
+
+export async function guardarDatosFactura(form: FormData) {
+  await requireAuth();
+  const cp = String(form.get("factura_cp") ?? "").trim();
+  const clave = String(form.get("factura_clave") ?? "").trim();
+  if (!/^(\d{5})?$/.test(cp) || !/^(\d{8})?$/.test(clave)) return;
+  const sql = "INSERT INTO ajustes (clave, valor) VALUES (?, ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor";
+  await (await db()).batch(
+    [
+      { sql, args: ["factura_cp", cp] },
+      { sql, args: ["factura_clave", clave] },
+    ],
+    "write",
+  );
+  revalidatePath("/ajustes");
+  revalidatePath("/facturar");
+}
 
 export async function guardarImpuesto(form: FormData) {
   await requireAuth();
