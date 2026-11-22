@@ -1,4 +1,5 @@
 import { createClient, type Client } from "@libsql/client";
+import type { DatosFactura, Movimiento } from "./factura";
 
 let client: Client | null = null;
 let ready: Promise<void> | null = null;
@@ -53,6 +54,19 @@ const SCHEMA = [
     nota TEXT,
     creado TEXT DEFAULT (datetime('now'))
   )`,
+  // Historial de facturas sacadas del estado de cuenta (abonos en MXN). Sin NULL para que UNIQUE no deje duplicados.
+  `CREATE TABLE IF NOT EXISTS facturas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha TEXT NOT NULL,
+    monto REAL NOT NULL,
+    pagador TEXT NOT NULL DEFAULT '',
+    banco TEXT NOT NULL DEFAULT '',
+    referencia TEXT NOT NULL DEFAULT '',
+    rastreo TEXT NOT NULL DEFAULT '',
+    creado TEXT DEFAULT (datetime('now')),
+    UNIQUE(fecha, monto, referencia, rastreo)
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_facturas_fecha ON facturas(fecha)`,
   `CREATE INDEX IF NOT EXISTS idx_gastos_fecha ON gastos(fecha)`,
   `CREATE TABLE IF NOT EXISTS login_intentos (
     ip TEXT PRIMARY KEY,
@@ -183,6 +197,15 @@ export async function impuestoPct(c?: Client): Promise<number> {
   const n = Number(r?.valor);
   return Number.isFinite(n) && n >= 0 && n <= 100 ? n : 0;
 }
+
+/** Código postal y clave prod/serv guardados en Ajustes para las facturas ("" si no se han puesto). */
+export async function datosFactura(c?: Client): Promise<DatosFactura> {
+  const r = await (c ?? (await db())).execute("SELECT clave, valor FROM ajustes WHERE clave IN ('factura_cp', 'factura_clave')");
+  const v = Object.fromEntries(r.rows.map((x) => [String(x.clave), String(x.valor)]));
+  return { cp: v.factura_cp ?? "", clave: v.factura_clave ?? "" };
+}
+
+export type Factura = Movimiento & { id: number; creado: string };
 
 export const estadoPara = (fuente: string, estado: "pending" | "paid") => (esDiferida(fuente) ? estado : "paid");
 
