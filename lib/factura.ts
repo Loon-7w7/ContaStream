@@ -10,8 +10,6 @@ export type Movimiento = {
   rastreo: string;
 };
 
-export type DatosFactura = { cp: string; clave: string };
-
 const MESES: Record<string, string> = {
   ENE: "01", FEB: "02", MAR: "03", ABR: "04", MAY: "05", JUN: "06",
   JUL: "07", AGO: "08", SEP: "09", OCT: "10", NOV: "11", DIC: "12",
@@ -107,15 +105,8 @@ export const claveMovimiento = (m: Movimiento) => `${m.fecha}|${m.monto.toFixed(
 
 /** Clientes conocidos: nombre fiscal, cómo se llama la plataforma y dónde reside. */
 const CLIENTES = [
-  {
-    patron: /kick/i,
-    nombre: "KICK STREAMING LTD",
-    plataforma: "Kick",
-    residencia: [
-      "Estados Unidos (la dirección 651 N Broad es de Delaware;",
-      "revisa en tu panel de pagos de Kick si indica otro país)",
-    ],
-  },
+  { patron: /kick/i, nombre: "KICK STREAMING LTD", plataforma: "Kick", residencia: "Estados Unidos" },
+  { patron: /twitch/i, nombre: "TWITCH INTERACTIVE, INC.", plataforma: "Twitch", residencia: "Estados Unidos" },
 ];
 
 export const clienteConocido = (pagador: string) => CLIENTES.some((c) => c.patron.test(pagador));
@@ -123,45 +114,114 @@ export const clienteConocido = (pagador: string) => CLIENTES.some((c) => c.patro
 const mxn = new Intl.NumberFormat("en-US", { style: "currency", currency: "MXN", currencyDisplay: "narrowSymbol" });
 export const pesos = (n: number) => `${mxn.format(n)} MXN`;
 
-const campo = (etiqueta: string, valor: string) => `${(etiqueta + ":").padEnd(21)}${valor}`;
-const sangria = " ".repeat(21);
+const MESES_LARGOS = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
 
-/** Texto listo para copiar al facturador del SAT, con el formato de siempre. */
-export function textoFactura(m: Movimiento, datos: DatosFactura): string {
+/** Variables que se pueden usar en la plantilla, con lo que ponen. */
+export const VARIABLES: Record<string, string> = {
+  nombre: "Nombre fiscal del cliente (KICK STREAMING LTD)",
+  plataforma: "Plataforma que pagó (Kick, Twitch…)",
+  residencia: "Residencia fiscal del cliente",
+  fecha: "Fecha del depósito, DD/MM/AAAA",
+  monto: "Monto exacto del depósito (250.24)",
+  monto_mxn: "Monto con signo ($250.24 MXN)",
+  anio: "Año del depósito",
+  mes: "Mes del depósito (09 Septiembre)",
+  pagador: "Pagador tal como sale en el banco",
+  banco: "Banco por el que llegó",
+  referencia: "Referencia del SPEI",
+  rastreo: "Clave de rastreo del SPEI",
+};
+
+function valores(m: Movimiento): Record<string, string> {
   const cliente = CLIENTES.find((c) => c.patron.test(m.pagador));
-  const nombre = cliente?.nombre ?? (m.pagador.toUpperCase() || "[nombre del cliente]");
-  const plataforma = cliente?.plataforma ?? (m.pagador || "cliente");
-  const [residencia, ...masResidencia] = cliente?.residencia ?? ["[país de residencia fiscal del cliente]"];
   const [y, mes, d] = m.fecha.split("-");
-
-  return [
-    "RECEPTOR",
-    campo("RFC", "XEXX010101000"),
-    campo("Nombre", nombre),
-    campo("Código postal", datos.cp || "[TU código postal]"),
-    campo("Régimen", "616 Sin obligaciones fiscales"),
-    campo("Uso CFDI", "S01 Sin efectos fiscales"),
-    campo("Residencia fiscal", residencia),
-    ...masResidencia.map((l) => sangria + l),
-    "",
-    "COMPROBANTE",
-    campo("Tipo", "Ingreso"),
-    campo("Moneda", "MXN"),
-    campo("Método de pago", "PUE Pago en una sola exhibición"),
-    campo("Forma de pago", "03 Transferencia electrónica de fondos"),
-    campo("Exportación", "01 No aplica"),
-    "",
-    "CONCEPTO",
-    campo("Clave prod/serv", datos.clave || '(busca "contenido" o "Internet" en el catálogo)'),
-    campo("Descripción", "Servicios de creación y difusión de contenido por"),
-    sangria + `Internet – pago ${plataforma} ${d}/${mes}/${y}`,
-    campo("Unidad", "E48 Unidad de servicio"),
-    campo("Cantidad", "1"),
-    campo("Valor unitario", m.monto.toFixed(2)),
-    campo("Objeto impuesto", "02 Sí objeto de impuesto"),
-    campo("IVA", "Traslado, tasa 0%  → $0.00"),
-    campo("Retenciones", "Ninguna"),
-    "",
-    campo("TOTAL", pesos(m.monto)),
-  ].join("\n");
+  return {
+    nombre: cliente?.nombre ?? (m.pagador.toUpperCase() || "[nombre del cliente]"),
+    plataforma: cliente?.plataforma ?? (m.pagador || "[plataforma]"),
+    residencia: cliente?.residencia ?? "[país del cliente]",
+    fecha: `${d}/${mes}/${y}`,
+    monto: m.monto.toFixed(2),
+    monto_mxn: pesos(m.monto),
+    anio: y,
+    mes: `${mes} ${MESES_LARGOS[Number(mes) - 1]}`,
+    pagador: m.pagador,
+    banco: m.banco,
+    referencia: m.referencia,
+    rastreo: m.rastreo,
+  };
 }
+
+/** Llena la plantilla con los datos del movimiento. Las {variables} que no existen se quedan tal cual. */
+export function textoFactura(m: Movimiento, plantilla: string): string {
+  const v = valores(m);
+  return plantilla.replace(/\{([a-z_]+)\}/g, (todo, k: string) => (Object.hasOwn(v, k) ? v[k] : todo));
+}
+
+export const MAX_PLANTILLA = 20_000;
+
+/** La plantilla de siempre; se puede cambiar en Facturar → Plantilla. */
+export const PLANTILLA_DEFAULT = `════════════════════════════════════════════════
+  PLANTILLA FACTURA – COBROS DE PLATAFORMAS
+  (Kick, Twitch, sponsors y similares)
+════════════════════════════════════════════════
+
+1) COMPROBANTE  (parte de arriba, iconos ☰)
+   Régimen fiscal:     626 Régimen Simplificado de Confianza
+   Código postal:      97860
+   Tipo de factura:    Ingreso
+   Forma de pago:      03 Transferencia electrónica de fondos (incluye SPEI)
+                       ⚠ Revisa SIEMPRE: el sistema pone "Efectivo" por defecto
+   Método de pago:     PUE Pago en una sola exhibición
+   Exportación:        01 No aplica
+
+2) DATOS GENERALES
+   Moneda:             Peso Mexicano
+   Tipo de cambio:     (vacío)
+   ── Si te pagaron en DÓLARES y no en pesos: ──
+   Moneda:             Dólar americano (USD)
+   Tipo de cambio:     [tipo de cambio DOF del día del cobro]
+
+3) DATOS DEL CLIENTE
+   RFC:                XEXX010101000      ⚠ XEXX, NO XAXX
+   Nombre:             {nombre}
+   Código postal:      97860              (siempre el tuyo)
+   Régimen fiscal:     616 Sin obligaciones fiscales
+   Uso de la factura:  S01 Sin efectos fiscales
+   Residencia fiscal:  {residencia}
+
+4) PRODUCTO Y SERVICIO  (botón "Agregar")
+   Producto o servicio: 80141903 Talento o entretenimiento
+                        (buscar escribiendo "entreten")
+   Descripción:         Servicio de creación y difusión de contenido por
+                        internet - pago {plataforma} {fecha}
+   Unidad:              E48 Unidad de servicio
+   Cantidad:            1
+   Valor unitario:      {monto}
+   Descuento:           (vacío)
+   Objeto de impuesto:  02 Sí objeto de impuesto
+
+5) IMPUESTOS  (dentro de la ventana del concepto)
+   ☐ Acepto Sugerencia de Impuestos   ← DESMARCAR (si no, pone 16%)
+   IVA cobrado:        ☑ Tasa   →  Valor: 0%     (NO "Exento")
+   Retención de IVA:   ☐ sin marcar
+   Retención de ISR:   ☐ sin marcar
+
+6) TOTALES  (se llenan solos – comprobar)
+   Subtotal:              {monto}
+   Impuestos trasladados: 0.00
+   Total:                 {monto}
+
+7) ANTES DE SELLAR → "Vista Previa" y revisar:
+   ☐ RFC receptor dice XEXX010101000
+   ☐ Forma de pago dice "Transferencia electrónica de fondos"
+   ☐ IVA 0.00%
+   ☐ Monto y fecha correctos en la descripción
+
+8) SELLAR
+   Archivos del CSD (.cer de CertiSAT + .key de Certifica + contraseña CSD)
+   ⚠ NO los de la e.firma
+   Descargar XML + PDF → carpeta Facturas/{anio}/{mes}
+════════════════════════════════════════════════`;

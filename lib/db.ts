@@ -1,5 +1,5 @@
 import { createClient, type Client } from "@libsql/client";
-import type { DatosFactura, Movimiento } from "./factura";
+import { MAX_PLANTILLA, PLANTILLA_DEFAULT, type Movimiento } from "./factura";
 
 let client: Client | null = null;
 let ready: Promise<void> | null = null;
@@ -63,6 +63,7 @@ const SCHEMA = [
     banco TEXT NOT NULL DEFAULT '',
     referencia TEXT NOT NULL DEFAULT '',
     rastreo TEXT NOT NULL DEFAULT '',
+    texto TEXT,
     creado TEXT DEFAULT (datetime('now')),
     UNIQUE(fecha, monto, referencia, rastreo)
   )`,
@@ -122,6 +123,9 @@ async function migrar(c: Client) {
     }
   }
   if (pagoNuevo) await c.batch(LOTES_HISTORICOS, "write");
+  // Texto de la factura tal como salió al guardarla (las de antes se arman con la plantilla actual).
+  const colsFac = (await c.execute("PRAGMA table_info(facturas)")).rows.map((r) => String(r.name));
+  if (!colsFac.includes("texto")) await c.execute("ALTER TABLE facturas ADD COLUMN texto TEXT");
 }
 
 /** Devuelve el cliente de Turso y crea las tablas la primera vez. */
@@ -198,14 +202,14 @@ export async function impuestoPct(c?: Client): Promise<number> {
   return Number.isFinite(n) && n >= 0 && n <= 100 ? n : 0;
 }
 
-/** Código postal y clave prod/serv guardados en Ajustes para las facturas ("" si no se han puesto). */
-export async function datosFactura(c?: Client): Promise<DatosFactura> {
-  const r = await (c ?? (await db())).execute("SELECT clave, valor FROM ajustes WHERE clave IN ('factura_cp', 'factura_clave')");
-  const v = Object.fromEntries(r.rows.map((x) => [String(x.clave), String(x.valor)]));
-  return { cp: v.factura_cp ?? "", clave: v.factura_clave ?? "" };
+/** Plantilla de factura guardada en Facturar → Plantilla (la de siempre si nunca se cambió). */
+export async function plantillaFactura(c?: Client): Promise<string> {
+  const r = (await (c ?? (await db())).execute("SELECT valor FROM ajustes WHERE clave = 'factura_plantilla'")).rows[0];
+  const v = typeof r?.valor === "string" ? r.valor : "";
+  return v.trim() && v.length <= MAX_PLANTILLA ? v : PLANTILLA_DEFAULT;
 }
 
-export type Factura = Movimiento & { id: number; creado: string };
+export type Factura = Movimiento & { id: number; creado: string; texto: string | null };
 
 export const estadoPara = (fuente: string, estado: "pending" | "paid") => (esDiferida(fuente) ? estado : "paid");
 
