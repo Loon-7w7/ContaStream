@@ -3,10 +3,10 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { db, esCategoria, esFuente, estadoPara } from "@/lib/db";
+import { db, esCategoria, esFuente, estadoPara, plantillaFactura } from "@/lib/db";
 import { COOKIE, DURACION_SESION, requireAuth, safeEqual, sessionToken, sha256 } from "@/lib/auth";
 import type { FilaStream } from "@/lib/parse";
-import type { Movimiento } from "@/lib/factura";
+import { MAX_PLANTILLA, textoFactura, type Movimiento } from "@/lib/factura";
 import { hoyMx } from "@/lib/format";
 
 /* ---------- Validación ---------- */
@@ -337,16 +337,25 @@ function movimientoValido(m: unknown): m is Movimiento {
   );
 }
 
+/** Cada factura guarda su texto completo: un estado de cuenta mensual nunca trae tantos abonos. */
+const MAX_FACTURAS = 200;
+
 export async function guardarFacturas(movs: Movimiento[]) {
   await requireAuth();
-  if (!Array.isArray(movs) || movs.length > MAX_FILAS || !movs.every(movimientoValido)) {
+  if (!Array.isArray(movs) || movs.length > MAX_FACTURAS || !movs.every(movimientoValido)) {
     throw new Error("Movimientos inválidos");
   }
-  const r = await (await db()).batch(
-    movs.map((m) => ({
-      sql: `INSERT OR IGNORE INTO facturas (fecha, monto, pagador, banco, referencia, rastreo) VALUES (?, ?, ?, ?, ?, ?)`,
-      args: [m.fecha, Math.round(m.monto * 100) / 100, m.pagador, m.banco, m.referencia, m.rastreo],
-    })),
+  const c = await db();
+  // El texto se arma aquí con la plantilla guardada y queda fijo: así se ve igual aunque luego cambie la plantilla.
+  const plantilla = await plantillaFactura(c);
+  const r = await c.batch(
+    movs.map((m) => {
+      const monto = Math.round(m.monto * 100) / 100;
+      return {
+        sql: `INSERT OR IGNORE INTO facturas (fecha, monto, pagador, banco, referencia, rastreo, texto) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        args: [m.fecha, monto, m.pagador, m.banco, m.referencia, m.rastreo, textoFactura({ ...m, monto }, plantilla)],
+      };
+    }),
     "write",
   );
   const nuevas = r.reduce((a, x) => a + x.rowsAffected, 0);
@@ -362,24 +371,19 @@ export async function borrarFactura(form: FormData) {
   revalidatePath("/facturar");
 }
 
-/* ---------- Ajustes ---------- */
-
-export async function guardarDatosFactura(form: FormData) {
+/** Plantilla de factura (Facturar → Plantilla). Vacía o "restaurar" vuelve a la de siempre. */
+export async function guardarPlantilla(form: FormData) {
   await requireAuth();
-  const cp = String(form.get("factura_cp") ?? "").trim();
-  const clave = String(form.get("factura_clave") ?? "").trim();
-  if (!/^(\d{5})?$/.test(cp) || !/^(\d{8})?$/.test(clave)) return;
-  const sql = "INSERT INTO ajustes (clave, valor) VALUES (?, ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor";
-  await (await db()).batch(
-    [
-      { sql, args: ["factura_cp", cp] },
-      { sql, args: ["factura_clave", clave] },
-    ],
-    "write",
-  );
-  revalidatePath("/ajustes");
+  const plantilla = form.get("restaurar") ? "" : String(form.get("plantilla") ?? "").replace(/\r\n/g, "\n");
+  if (plantilla.length > MAX_PLANTILLA) return;
+  await (await db()).execute({
+    sql: "INSERT INTO ajustes (clave, valor) VALUES ('factura_plantilla', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor",
+    args: [plantilla],
+  });
   revalidatePath("/facturar");
 }
+
+/* ---------- Ajustes ---------- */
 
 export async function guardarImpuesto(form: FormData) {
   await requireAuth();

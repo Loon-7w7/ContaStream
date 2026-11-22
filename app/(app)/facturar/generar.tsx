@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { anioSugerido, claveMovimiento, clienteConocido, parseMovimientos, pesos, textoFactura, type DatosFactura } from "@/lib/factura";
+import { anioSugerido, claveMovimiento, clienteConocido, parseMovimientos, pesos, textoFactura } from "@/lib/factura";
 import { diaCorto, hoyMx } from "@/lib/format";
 import { guardarFacturas } from "../../actions";
 import { BotonCopiar } from "./copiar";
 
 /** Pegar el estado de cuenta → una factura lista para copiar por cada abono. */
-export function GenerarFacturas({ datos, guardadas }: { datos: DatosFactura; guardadas: string[] }) {
+export function GenerarFacturas({ plantilla, guardadas }: { plantilla: string; guardadas: string[] }) {
   const [texto, setTexto] = useState("");
   const [anio, setAnio] = useState<number | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -98,14 +98,14 @@ export function GenerarFacturas({ datos, guardadas }: { datos: DatosFactura; gua
                     {diaCorto(m.fecha)} · {m.pagador || "Pagador sin nombre"}
                   </span>
                   {ya.has(claveMovimiento(m)) && <span className="pill paid">Ya en el historial</span>}
-                  <BotonCopiar texto={textoFactura(m, datos)} />
+                  <BotonCopiar texto={textoFactura(m, plantilla)} />
                 </div>
                 {!clienteConocido(m.pagador) && (
                   <p className="err" style={{ marginTop: 0 }}>
                     Cliente no reconocido: revisa nombre, RFC y residencia fiscal antes de timbrar.
                   </p>
                 )}
-                <pre className="factura-texto">{textoFactura(m, datos)}</pre>
+                <pre className="factura-texto">{textoFactura(m, plantilla)}</pre>
               </article>
             ))}
           </div>
