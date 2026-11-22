@@ -1,16 +1,15 @@
 import { Download } from "lucide-react";
-import { db, datosFactura, impuestoPct } from "@/lib/db";
+import { db, impuestoPct } from "@/lib/db";
 import { mesActual, nombreMesLargo } from "@/lib/format";
-import { guardarDatosFactura, guardarImpuesto } from "../../actions";
+import { guardarImpuesto } from "../../actions";
 import { BotonEnviar } from "../boton-enviar";
 
 export const dynamic = "force-dynamic";
 
 export default async function Ajustes() {
   const c = await db();
-  const [pct, fac, meses] = await Promise.all([
+  const [pct, meses] = await Promise.all([
     impuestoPct(c),
-    datosFactura(c),
     c.execute(`SELECT DISTINCT substr(fecha,1,7) mes FROM (
       SELECT fecha FROM streams UNION ALL SELECT fecha FROM manuales UNION ALL SELECT fecha FROM gastos
       UNION ALL SELECT cobrado_en FROM streams WHERE cobrado_en IS NOT NULL
@@ -24,7 +23,7 @@ export default async function Ajustes() {
       <div className="page-head">
         <div>
           <h1>Ajustes</h1>
-          <p className="lead">Impuestos, datos para facturar y exportación de tus datos.</p>
+          <p className="lead">Impuestos y exportación de tus datos.</p>
         </div>
       </div>
 
@@ -40,26 +39,6 @@ export default async function Ajustes() {
           <label>
             Porcentaje (%)
             <input type="number" name="impuesto_pct" step="0.01" min="0" max="100" defaultValue={pct} required style={{ width: 120 }} />
-          </label>
-          <BotonEnviar className="primary">Guardar</BotonEnviar>
-        </form>
-      </section>
-
-      <section className="panel" aria-labelledby="t-fac" style={{ marginBottom: 16 }}>
-        <div className="panel-head">
-          <h2 id="t-fac">Datos para facturar</h2>
-        </div>
-        <p className="muted" style={{ marginTop: 0 }}>
-          Se ponen solos en cada factura de la sección <strong>Facturar</strong>. Déjalos vacíos para llenarlos a mano en el SAT.
-        </p>
-        <form action={guardarDatosFactura} className="row">
-          <label>
-            Tu código postal
-            <input name="factura_cp" inputMode="numeric" pattern="\d{5}" maxLength={5} placeholder="00000" defaultValue={fac.cp} style={{ width: 120 }} />
-          </label>
-          <label>
-            Clave prod/serv (SAT)
-            <input name="factura_clave" inputMode="numeric" pattern="\d{8}" maxLength={8} placeholder="8 dígitos" defaultValue={fac.clave} style={{ width: 150 }} />
           </label>
           <BotonEnviar className="primary">Guardar</BotonEnviar>
         </form>
